@@ -9,6 +9,7 @@ let currentMonth = new Date().getMonth() + 1
 
 let calendarData = {}
 let selectedDate = null
+let appMessageTimer = null
 
 const MONTH_NAMES = [
   "January","February","Mars","April","May","June",
@@ -256,7 +257,17 @@ function setRegisterError(message) {
 }
 
 function setAppMessage(message) {
+    clearTimeout(appMessageTimer)
     setError("app-message", message)
+
+    if (!message) {
+        return
+    }
+
+    appMessageTimer = setTimeout(() => {
+        setError("app-message", "")
+        appMessageTimer = null
+    }, 5000)
 }
 
 function togglePassword(show, inputId) {
@@ -581,6 +592,11 @@ async function addSession() {
         }
     }
 
+    if(!title || !desc){
+        setAppMessage("Fill both session title and description.")
+        return
+    }
+
     await authFetch("/api/sessions", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
@@ -849,6 +865,11 @@ async function addGoal() {
     if (!date) {
         const year = new Date().getFullYear()
         date = `${year}-12-31`
+    }
+
+    if(!title || !target){
+        setAppMessage("Fill both goal title and target.")
+        return
     }
 
     await authFetch("/api/goals", {
