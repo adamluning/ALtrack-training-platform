@@ -142,6 +142,17 @@ h2,h3{margin:0 0 10px 0;}
     font-size: 0.95rem;
 }
 
+#app-message {
+  position: sticky;
+  top: 56px;
+  z-index: 9999;
+  width: calc(100% - 40px);
+  margin: 8px 20px 0 20px;
+  display: none;
+  box-sizing: border-box;
+  text-align: center;
+}
+
 input, button{
   background:var(--bg2);
   color:var(--text);

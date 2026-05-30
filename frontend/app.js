@@ -148,6 +148,7 @@ function bootApp(){
     document.getElementById("app-root").style.display = "block"
 
     document.getElementById("session-date").value = ""
+    setAppMessage("")
 
     if (isGuest) {
         prepareGuestSampleData()
@@ -158,6 +159,31 @@ function bootApp(){
     loadGoals()
     loadStats()
     loadPBs()
+}
+
+function applyGuestReadOnlyUI() {
+    const selectors = [
+        "#add-goal-panel input",
+        "#add-goal-panel button",
+        "#add-session-panel input",
+        "#add-session-panel button",
+        "#manual-volume input",
+        "#manual-volume button",
+        "#pb-panel input",
+        "#pb-panel button",
+        "#goals-list button",
+        "#pb-list button",
+        "#day-sessions input",
+        "#day-sessions button"
+    ]
+
+    selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+            if (el.tagName === "BUTTON" || el.tagName === "INPUT") {
+                el.disabled = true
+            }
+        })
+    })
 }
 
 async function authFetch(url, options = {}) {
@@ -227,6 +253,10 @@ function setAuthError(message) {
 
 function setRegisterError(message) {
     setError("register-error", message)
+}
+
+function setAppMessage(message) {
+    setError("app-message", message)
 }
 
 function togglePassword(show, inputId) {
@@ -399,6 +429,7 @@ async function loadCalendar() {
     if (selectedDate && calendarData[selectedDate]) {
         selectDay(selectedDate)
     }
+    if (isGuest) applyGuestReadOnlyUI()
 }
 
 async function renderCalendar(year, month) {
@@ -484,16 +515,25 @@ async function selectDay(dateStr) {
 
         container.appendChild(card)
     });
+
+    if (isGuest) applyGuestReadOnlyUI()
 }
 
 function renderSessionCard(s){
     const leftActions = []
+    const canEditSession = !isGuest
+    const disabledAttr = isGuest ? "disabled" : ""
+
     if (!s.completed) {
-        leftActions.push(`<button onclick="complete_s(${s.id})">Complete</button>`)
+        leftActions.push(`<button ${disabledAttr} ${canEditSession ? `onclick="complete_s(${s.id})"` : ""}>Complete</button>`)
     }
     if (!s.notes) {
-        leftActions.push(`<input id="note-${s.id}" placeholder="Add note"><button onclick="addNote(${s.id})">Save note</button>`)
+        leftActions.push(`<input id="note-${s.id}" placeholder="Add note"><button ${disabledAttr} ${canEditSession ? `onclick="addNote(${s.id})"` : ""}>Save note</button>`)
     }
+
+    const rightActions = []
+    rightActions.push(`<button class="edit-session-button" ${disabledAttr} ${canEditSession ? `onclick="editSession(${s.id})"` : ""}>Edit session</button>`)
+    rightActions.push(`<button class="delete-session-button" ${disabledAttr} ${canEditSession ? `onclick="delete_s(${s.id})"` : ""}>Delete session</button>`)
 
     return `
     <div class="session-card">
@@ -513,10 +553,7 @@ function renderSessionCard(s){
 
         <div class="session-actions">
             ${leftActions.length ? `<div class="session-left-actions">${leftActions.join('')}</div>` : ""}
-            <div class="session-right-actions">
-                <button class="edit-session-button" onclick="editSession(${s.id})">Edit session</button>
-                <button class="delete-session-button" onclick="delete_s(${s.id})">Delete session</button>
-            </div>
+            <div class="session-right-actions">${rightActions.join('')}</div>
         </div>
     </div>
     `
@@ -524,7 +561,7 @@ function renderSessionCard(s){
 
 async function addSession() {
     if (isGuest) {
-        alert("Guest mode: cannot add sessions")
+        setAppMessage("Guest mode is read-only.")
         document.getElementById("session-title").value = ""
         document.getElementById("session-desc").value = ""
         document.getElementById("session-date").value = selectedDate || "" 
@@ -565,7 +602,7 @@ async function addSession() {
 
 async function complete_s(id) {
     if (isGuest) {
-        alert("Guest mode: cannot complete sessions")
+        setAppMessage("Guest mode is read-only.")
         return
     }
 
@@ -587,7 +624,7 @@ async function complete_s(id) {
 
 async function submitVolume(id) {
     if (isGuest) {
-        alert("Guest mode: cannot add sessions")
+        setAppMessage("Guest mode is read-only.")
         return
     }
 
@@ -610,7 +647,7 @@ async function submitVolume(id) {
 
 async function addNote(id) {
     if (isGuest) {
-        alert("Guest mode: cannot add notes")
+        setAppMessage("Guest mode is read-only.")
         document.getElementById(`note-${id}`).value = ""
         return
     }
@@ -633,7 +670,7 @@ async function addNote(id) {
 
 function editSession(id) {
     if (isGuest) {
-        alert("Guest mode: cannot edit sessions")
+        setAppMessage("Guest mode is read-only.")
         return
     }
 
@@ -705,7 +742,7 @@ function cancelEditSession(id) {
 
 async function saveSessionEdit(id) {
     if (isGuest) {
-        alert("Guest mode: cannot edit sessions")
+        setAppMessage("Guest mode is read-only.")
         return
     }
 
@@ -742,7 +779,7 @@ function htmlEscape(str) {
 
 async function delete_s(id) {
     if (isGuest) {
-        alert("Guest mode: cannot delete sessions")
+        setAppMessage("Guest mode is read-only.")
         return
     }
 
@@ -775,7 +812,7 @@ async function loadGoals() {
             const div = document.createElement("div")
             div.innerHTML = `
                 <b>${g.title} </b> — ${g.target} — ${g.end_date}
-                <button onclick="delete_g(${g.id})">Delete</button>
+                <button ${isGuest ? "disabled" : "onclick=\"delete_g(${g.id})\""}>Delete</button>
             `
             container.appendChild(div)
         });
@@ -784,7 +821,7 @@ async function loadGoals() {
 
 async function addGoal() {
     if (isGuest) {
-        alert("Guest mode: cannot add goals")
+        setAppMessage("Guest mode is read-only.")
         document.getElementById("goal-title").value = ""
         document.getElementById("goal-target").value = ""
         document.getElementById("goal-date").value = ""
@@ -819,7 +856,7 @@ async function addGoal() {
 
 async function delete_g(id) {
     if (isGuest) {
-        alert("Guest mode: cannot delete goals")
+        setAppMessage("Guest mode is read-only.")
         return
     }
 
@@ -1095,7 +1132,7 @@ async function statsYear() {
 
 async function addMonthlyVolume() {
     if (isGuest) {
-        alert("Guest mode: cannot add sessions")
+        setAppMessage("Guest mode is read-only.")
         document.getElementById("mv-year").value = ""
         document.getElementById("mv-month").value = ""
         document.getElementById("mv-distance").value = ""
@@ -1109,7 +1146,7 @@ async function addMonthlyVolume() {
     const duration = parseInt(document.getElementById("mv-duration").value)
 
     if(!year || !month || !distance || !duration){
-        alert("Fill all fields")
+        setAppMessage("Fill all fields to add monthly volume.")
         document.getElementById("mv-year").value = ""
         document.getElementById("mv-month").value = ""
         document.getElementById("mv-distance").value = ""
@@ -1157,7 +1194,7 @@ async function loadPBs() {
             div.className = "pb-card"
             div.innerHTML = `
                 <b>${pb.distance} km </b> ${pb.time}</b>
-                <button onclick="delete_pb(${pb.id})">Delete</button>
+                <button ${isGuest ? "disabled" : `onclick=\"delete_pb(${pb.id})\"`}>Delete</button>
             `
             container.appendChild(div)
         });
@@ -1170,7 +1207,7 @@ function isValidTime(t) {
 
 async function addPB() {
     if (isGuest) {
-        alert("Guest mode: cannot add PB")
+        setAppMessage("Guest mode is read-only.")
         document.getElementById("pb-distance").value = ""
         document.getElementById("pb-time").value = ""
         return
@@ -1180,12 +1217,12 @@ async function addPB() {
     let time = document.getElementById("pb-time").value
 
     if(!distance || !time){
-        alert("Fill distance and time")
+        setAppMessage("Fill both PB distance and time.")
         return
     }
 
     if (!isValidTime(time)) {
-        alert("Time must be in hh:mm:ss format");
+        setAppMessage("Time must be in hh:mm:ss format.")
         return;
     }
 
@@ -1206,7 +1243,7 @@ async function addPB() {
 
 async function delete_pb(id) {
     if (isGuest) {
-        alert("Guest mode: cannot delete PB")
+        setAppMessage("Guest mode is read-only.")
         return
     }
 
