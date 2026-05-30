@@ -33,10 +33,30 @@ let guestPBs = []
 let guestYearlyStats = {}
 let guestMonthlyStats = { monthly_distance_km: 0, monthly_duration_min: 0 }
 
+// ===== Utilities =====
 function getDateString(date) {
     return date.toISOString().split("T")[0]
 }
 
+function prevMonth() {
+    currentMonth--
+    if (currentMonth === 0) {
+        currentMonth = 12
+        currentYear--
+    }
+    loadCalendar()
+}
+
+function nextMonth() {
+    currentMonth++
+    if (currentMonth === 13) {
+        currentMonth = 1
+        currentYear++
+    }
+    loadCalendar()
+}
+
+// ===== Guest sample data =====
 function prepareGuestSampleData() {
     const now = new Date()
     const today = getDateString(now)
@@ -91,8 +111,6 @@ function prepareGuestSampleData() {
         }
     }
 
-    const statYears = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3]
-
     guestYearlyStats = {}
     selectedYears.forEach(year => {
         const rng = seededRng(year * 1234567)
@@ -123,26 +141,7 @@ function prepareGuestSampleData() {
     }
 }
 
-function prevMonth() {
-    currentMonth--
-    if (currentMonth === 0) {
-        currentMonth = 12
-        currentYear--
-    }
-    loadCalendar()
-}
-
-function nextMonth() {
-    currentMonth++
-    if (currentMonth === 13) {
-        currentMonth = 1
-        currentYear++
-    }
-    loadCalendar()
-}
-
-document.getElementById("toggle-volume-type").addEventListener("change", statsYear)
-
+// ===== App lifecycle =====
 function bootApp(){
     document.getElementById("auth-panel").style.display = "none"
     document.getElementById("register-panel").style.display = "none"
@@ -159,9 +158,10 @@ function bootApp(){
     loadCalendar()
     loadGoals()
     loadStats()
-    loadPBs()
+    loadPersonalBests()
 }
 
+// ===== UI helpers =====
 function applyGuestReadOnlyUI() {
     const selectors = [
         "#add-goal-panel input",
@@ -276,6 +276,7 @@ function togglePassword(show, inputId) {
     input.type = show ? "text" : "password"
 }
 
+// ===== Authentication =====
 async function login() {
     const email = document.getElementById("auth-email").value.trim()
     const password = document.getElementById("auth-password").value
@@ -413,6 +414,7 @@ function showLogin(){
     setRegisterError("")
 }
 
+// ===== Calendar =====
 async function loadCalendar() {
     console.log("loadCalendar() called")
 
@@ -530,13 +532,14 @@ async function selectDay(dateStr) {
     if (isGuest) applyGuestReadOnlyUI()
 }
 
+// ===== Session rendering =====
 function renderSessionCard(s){
     const leftActions = []
     const canEditSession = !isGuest
     const disabledAttr = isGuest ? "disabled" : ""
 
     if (!s.completed) {
-        leftActions.push(`<button ${disabledAttr} ${canEditSession ? `onclick="complete_s(${s.id})"` : ""}>Complete</button>`)
+        leftActions.push(`<button ${disabledAttr} ${canEditSession ? `onclick="completeSession(${s.id})"` : ""}>Complete</button>`)
     }
     if (!s.notes) {
         leftActions.push(`<input id="note-${s.id}" placeholder="Add note"><button ${disabledAttr} ${canEditSession ? `onclick="addNote(${s.id})"` : ""}>Save note</button>`)
@@ -544,7 +547,7 @@ function renderSessionCard(s){
 
     const rightActions = []
     rightActions.push(`<button class="edit-session-button" ${disabledAttr} ${canEditSession ? `onclick="editSession(${s.id})"` : ""}>Edit session</button>`)
-    rightActions.push(`<button class="delete-session-button" ${disabledAttr} ${canEditSession ? `onclick="delete_s(${s.id})"` : ""}>Delete session</button>`)
+    rightActions.push(`<button class="delete-session-button" ${disabledAttr} ${canEditSession ? `onclick="deleteSession(${s.id})"` : ""}>Delete session</button>`)
 
     return `
     <div class="session-card">
@@ -570,6 +573,7 @@ function renderSessionCard(s){
     `
 }
 
+// ===== Session actions =====
 async function addSession() {
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
@@ -616,7 +620,7 @@ async function addSession() {
     loadCalendar()
 }
 
-async function complete_s(id) {
+async function completeSession(id) {
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
         return
@@ -793,7 +797,7 @@ function htmlEscape(str) {
         .replace(/'/g, '&#39;')
 }
 
-async function delete_s(id) {
+async function deleteSession(id) {
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
         return
@@ -807,6 +811,7 @@ async function delete_s(id) {
     if (selectedDate) selectDay(selectedDate)
 }
 
+// ===== Goals =====
 async function loadGoals() {
     console.log("loadGoals() called")
     const now = new Date()
@@ -842,7 +847,7 @@ async function loadGoals() {
                 <div class="goal-col goal-col-title"><b>${g.title}</b></div>
                 <div class="goal-col goal-col-target">${g.target}</div>
                 <div class="goal-col goal-col-end">${g.end_date}</div>
-                <div class="goal-col goal-col-actions"><button ${isGuest ? "disabled" : `onclick=\"delete_g(${g.id})\"`}>Delete</button></div>
+                <div class="goal-col goal-col-actions"><button ${isGuest ? "disabled" : `onclick=\"deleteGoal(${g.id})\"`}>Delete</button></div>
             `
             container.appendChild(div)
         });
@@ -889,7 +894,7 @@ async function addGoal() {
     loadGoals()
 }
 
-async function delete_g(id) {
+async function deleteGoal(id) {
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
         return
@@ -901,12 +906,13 @@ async function delete_g(id) {
     loadGoals()
 }
 
+// ===== Stats =====
 async function loadStats(){
-    statsMonth()
-    statsYear()
+    loadMonthlyStats()
+    loadYearlyStats()
 }
 
-async function statsMonth() {
+async function loadMonthlyStats() {
     let data = { monthly_distance_km: 0, monthly_duration_min: 0 }
     if (isGuest) {
         data = guestMonthlyStats
@@ -958,7 +964,7 @@ async function statsMonth() {
     ctx.fillText(dur.toString(), baseX + durWidth+ 8, barY2+20)
 }
 
-async function statsYear() {
+async function loadYearlyStats() {
     const canvas = document.getElementById("yearlyChart")
     const ctx = canvas.getContext("2d")
 
@@ -1208,8 +1214,9 @@ async function addMonthlyVolume() {
     loadStats()
 }
 
-async function loadPBs() {
-    console.log("loadPBs() called")
+// ===== Personal Bests =====
+async function loadPersonalBests() {
+    console.log("loadPersonalBests() called")
 
     let pbs = []
     if (isGuest) {
@@ -1240,7 +1247,7 @@ async function loadPBs() {
             div.innerHTML = `
                 <div class="pb-col pb-col-distance"><b>${pb.distance} km</b></div>
                 <div class="pb-col pb-col-time">${pb.time}</div>
-                <div class="pb-col pb-col-actions"><button ${isGuest ? "disabled" : `onclick=\"delete_pb(${pb.id})\"`}>Delete</button></div>
+                <div class="pb-col pb-col-actions"><button ${isGuest ? "disabled" : `onclick=\"deletePersonalBest(${pb.id})\"`}>Delete</button></div>
             `
             container.appendChild(div)
         });
@@ -1251,7 +1258,7 @@ function isValidTime(t) {
     return /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/.test(t);
 }
 
-async function addPB() {
+async function addPersonalBest() {
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
         document.getElementById("pb-distance").value = ""
@@ -1284,10 +1291,10 @@ async function addPB() {
     document.getElementById("pb-distance").value = ""
     document.getElementById("pb-time").value = ""
 
-    loadPBs()
+    loadPersonalBests()
 }
 
-async function delete_pb(id) {
+async function deletePersonalBest(id) {
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
         return
@@ -1296,5 +1303,5 @@ async function delete_pb(id) {
     await authFetch(`/api/pbs/${id}/delete`, {
         method: "DELETE"
     })
-    loadPBs()
+    loadPersonalBests()
 }
