@@ -395,8 +395,27 @@ button:hover{transform:translateY(-1px);filter:brightness(1.05);}
   padding:8px;
   margin-bottom:6px;
   display:flex;
-  justify-content:space-between;
+  align-items:center;
+  gap:12px;
 }
+
+.goal-list-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:8px 10px;
+  margin-top:6px;
+  margin-bottom:6px;
+  color:var(--muted);
+  font-weight:600;
+  border-bottom:1px solid var(--border);
+}
+
+.goal-col{ }
+.goal-col-title{ flex:0 0 400px; min-width:180px; }
+.goal-col-target{ flex:1 1 180px; }
+.goal-col-end{ flex:2 2 700px; }
+.goal-col-actions{ width:90px; flex:0 0 90px; text-align:right; }
 
 /* ===== PBs ===== */
 .pb-card{
@@ -406,8 +425,25 @@ button:hover{transform:translateY(-1px);filter:brightness(1.05);}
   padding:8px;
   margin-top:6px;
   display:flex;
-  justify-content:space-between;
+  align-items:center;
+  gap:12px;
 }
+
+.pb-list-header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:8px 10px;
+  margin-top:6px;
+  color:var(--muted);
+  font-weight:600;
+  border-bottom:1px solid var(--border);
+}
+
+.pb-col{ }
+.pb-col-distance{ width:120px; flex:0 0 120px; }
+.pb-col-time{ flex:1 1 200px; }
+.pb-col-actions{ width:90px; flex:0 0 90px; text-align:right; }
 
 /* ===== Stats ===== */
 /* Flip switch */

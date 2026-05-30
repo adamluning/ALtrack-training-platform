@@ -807,12 +807,26 @@ async function loadGoals() {
 
     const container = document.getElementById("goals-list")
     container.innerHTML = ""
+    // Header row for Goals
+    const header = document.createElement("div")
+    header.className = "goal-list-header"
+    header.innerHTML = `
+        <div class="goal-col goal-col-title">Title</div>
+        <div class="goal-col goal-col-target">Target</div>
+        <div class="goal-col goal-col-end">End date</div>
+        <div class="goal-col goal-col-actions"></div>
+    `
+    container.appendChild(header)
+
     if (goals) {
         goals.forEach(g => {
             const div = document.createElement("div")
+            div.className = "goal-card"
             div.innerHTML = `
-                <b>${g.title} </b> — ${g.target} — ${g.end_date}
-                <button ${isGuest ? "disabled" : "onclick=\"delete_g(${g.id})\""}>Delete</button>
+                <div class="goal-col goal-col-title"><b>${g.title}</b></div>
+                <div class="goal-col goal-col-target">${g.target}</div>
+                <div class="goal-col goal-col-end">${g.end_date}</div>
+                <div class="goal-col goal-col-actions"><button ${isGuest ? "disabled" : `onclick=\"delete_g(${g.id})\"`}>Delete</button></div>
             `
             container.appendChild(div)
         });
@@ -1187,14 +1201,25 @@ async function loadPBs() {
 
     const container = document.getElementById("pb-list")
     container.innerHTML = ""
+    // Header row for PBs
+    const header = document.createElement("div")
+    header.className = "pb-list-header"
+    header.innerHTML = `
+        <div class="pb-col pb-col-distance">Distance</div>
+        <div class="pb-col pb-col-time">Time</div>
+        <div class="pb-col pb-col-actions"></div>
+    `
+    container.appendChild(header)
+
     if (pbs) {
         pbs.sort((a, b) => a.distance - b.distance)
         pbs.forEach(pb => {
             const div = document.createElement("div")
             div.className = "pb-card"
             div.innerHTML = `
-                <b>${pb.distance} km </b> ${pb.time}</b>
-                <button ${isGuest ? "disabled" : `onclick=\"delete_pb(${pb.id})\"`}>Delete</button>
+                <div class="pb-col pb-col-distance"><b>${pb.distance} km</b></div>
+                <div class="pb-col pb-col-time">${pb.time}</div>
+                <div class="pb-col pb-col-actions"><button ${isGuest ? "disabled" : `onclick=\"delete_pb(${pb.id})\"`}>Delete</button></div>
             `
             container.appendChild(div)
         });
