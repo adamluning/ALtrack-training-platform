@@ -26,6 +26,102 @@ let selectedYears = [
     new Date().getFullYear()
 ]
 
+let guestCalendarData = {}
+let guestGoals = []
+let guestPBs = []
+let guestYearlyStats = {}
+let guestMonthlyStats = { monthly_distance_km: 0, monthly_duration_min: 0 }
+
+function getDateString(date) {
+    return date.toISOString().split("T")[0]
+}
+
+function prepareGuestSampleData() {
+    const now = new Date()
+    const today = getDateString(now)
+    const twoDaysAgo = new Date(now)
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    const preDate = getDateString(twoDaysAgo)
+
+    guestCalendarData = {}
+    guestCalendarData[today] = [
+        {
+            id: "guest-1",
+            title: "Recovery run",
+            description: "Easy recovery run.",
+            date: today,
+            completed: false,
+            notes: "Plan to finish after work",
+        }
+    ]
+    guestCalendarData[preDate] = [
+        {
+            id: "guest-2",
+            title: "Threshold session",
+            description: "10 km tempo with steady pace.",
+            date: preDate,
+            completed: true,
+            distance_km: 12.0,
+            duration_min: 68,
+            notes: "Strong finish, felt controlled.",
+        }
+    ]
+
+    guestGoals = [
+        { id: "goal-1", title: "Run 600 km this year", target: "600 km", end_date: `${now.getFullYear()}-12-31` },
+        { id: "goal-2", title: "Hit 50 training hours", target: "50 h", end_date: `${now.getFullYear()}-12-31` },
+        { id: "goal-3", title: "Set new PB at 5k race", target: "Sub 25 min", end_date: `${now.getFullYear()}-09-30` }
+    ]
+
+    guestPBs = [
+        { id: "pb-1", distance: 5, time: "00:26:05" },
+        { id: "pb-2", distance: 10, time: "00:54:30" },
+        { id: "pb-3", distance: 21.1, time: "01:57:45" }
+    ]
+
+    const baseDistances = [32, 38, 44, 52, 61, 70, 76, 74, 66, 54, 44, 36]
+    const baseDurations = [190, 220, 245, 285, 335, 390, 420, 410, 370, 305, 250, 200]
+
+    function seededRng(seed) {
+        let value = seed
+        return () => {
+            value = (value * 1664525 + 1013904223) % 4294967296
+            return value / 4294967296
+        }
+    }
+
+    const statYears = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3]
+
+    guestYearlyStats = {}
+    selectedYears.forEach(year => {
+        const rng = seededRng(year * 1234567)
+        guestYearlyStats[year] = baseDistances.map((distance, monthIndex) => {
+            if (year > currentYear - 4) {
+                const trend = 1 + (monthIndex - 1.5) * 0.1
+                const seasonality = 0.5 + rng() * 0.4
+                const yearShift = 1 - (currentYear - year) * 0.2
+
+                const distance_km = Math.max(0, distance * trend * seasonality * yearShift + (rng() - 0.5) * 4)
+                const duration_min = Math.max(0, baseDurations[monthIndex] * trend * seasonality * yearShift + (rng() - 0.5) * 12)
+
+                return {
+                    distance_km: Number(distance_km.toFixed(1)),
+                    duration_min: Math.round(duration_min)
+                }
+            } else {
+                return { distance_km: 0, duration_min: 0 }
+            }
+        })
+    })
+
+    const currentMonthIndex = now.getMonth()
+    const currentMonthStats = guestYearlyStats[currentYear]?.[currentMonthIndex]
+    guestMonthlyStats = {
+        monthly_distance_km: currentMonthStats?.distance_km || 0,
+        monthly_duration_min: currentMonthStats?.duration_min || 0
+    }
+}
+
 function prevMonth() {
     currentMonth--
     if (currentMonth === 0) {
@@ -52,6 +148,10 @@ function bootApp(){
     document.getElementById("app-root").style.display = "block"
 
     document.getElementById("session-date").value = ""
+
+    if (isGuest) {
+        prepareGuestSampleData()
+    }
 
     updateTopbar()
     loadCalendar()
@@ -188,6 +288,7 @@ async function guestLogin() {
             localStorage.setItem("auth_token", AUTH_TOKEN)
             localStorage.setItem("isGuest", "true")
             isGuest = true
+            prepareGuestSampleData()
             setAuthError("")
             bootApp()
         } else {
@@ -195,6 +296,7 @@ async function guestLogin() {
         }
     } catch (err) {
         setAuthError("Guest login failed: unable to reach server.")
+        return
     }
 }
 
@@ -273,12 +375,23 @@ function showLogin(){
 async function loadCalendar() {
     console.log("loadCalendar() called")
 
-    const res = await authFetch(`/api/calendar?year=${currentYear}&month=${currentMonth}`)
-    if (!res) return
-    calendarData = await res.json()
+    if (isGuest) {
+        calendarData = guestCalendarData
+    } else {
+        const res = await authFetch(`/api/calendar?year=${currentYear}&month=${currentMonth}`)
+        if (!res) return
+        calendarData = await res.json()
+    }
 
     document.getElementById("month-label").innerText =
         `${MONTH_NAMES[currentMonth-1]} ${currentYear}`
+
+    if (!selectedDate && isGuest) {
+        const today = getDateString(new Date())
+        if (calendarData[today]) {
+            selectedDate = today
+        }
+    }
 
     renderCalendar(currentYear, currentMonth)
     loadStats()
@@ -646,9 +759,14 @@ async function loadGoals() {
     const now = new Date()
     const year = now.getFullYear()
 
-    const res = await authFetch(`/api/goals?year=${year}`)
-    if (!res) return
-    const goals = await res.json()
+    let goals = []
+    if (isGuest) {
+        goals = guestGoals.filter(g => g.end_date.startsWith(`${year}-`))
+    } else {
+        const res = await authFetch(`/api/goals?year=${year}`)
+        if (!res) return
+        goals = await res.json()
+    }
 
     const container = document.getElementById("goals-list")
     container.innerHTML = ""
@@ -717,9 +835,14 @@ async function loadStats(){
 }
 
 async function statsMonth() {
-    const res = await authFetch(`/api/stats/month?year=${currentYear}&month=${currentMonth}`)
-    if (!res) return
-    const data = await res.json()
+    let data = { monthly_distance_km: 0, monthly_duration_min: 0 }
+    if (isGuest) {
+        data = guestMonthlyStats
+    } else {
+        const res = await authFetch(`/api/stats/month?year=${currentYear}&month=${currentMonth}`)
+        if (!res) return
+        data = await res.json()
+    }
 
     const canvas = document.getElementById("statsChart")
     const ctx = canvas.getContext("2d")
@@ -792,23 +915,34 @@ async function statsYear() {
 
     let allData = []
 
-    for (let i = 0; i < selectedYears.length; i++) {
-        const year = selectedYears[i]
-        const res = await authFetch(`/api/stats/year?year=${year}`)
-        if (!res) return
-        const data = await res.json()
+    if (isGuest) {
+        const guestYears = Object.keys(guestYearlyStats).map(Number)//.sort()
+        guestYears.forEach((year, i) => {
+            const data = guestYearlyStats[year]
+            const hasData = data.some(m => (metric === "distance" ? m.distance_km : m.duration_min) > 0)
+            if (hasData) {
+                allData.push({ year, data, color: colors[i % colors.length] })
+            }
+        })
+    } else {
+        for (let i = 0; i < selectedYears.length; i++) {
+            const year = selectedYears[i]
+            const res = await authFetch(`/api/stats/year?year=${year}`)
+            if (!res) return
+            const data = await res.json()
 
-        let hasData = false
-        for (let m = 0; m < 12; m++) {
-            const val = metric === "distance"
-                ? data[m].distance_km
-                : data[m].duration_min
+            let hasData = false
+            for (let m = 0; m < 12; m++) {
+                const val = metric === "distance"
+                    ? data[m].distance_km
+                    : data[m].duration_min
 
-            if (val > 0) hasData = true
-        }
+                if (val > 0) hasData = true
+            }
 
-        if (hasData) {
-            allData.push({ year, data, color: colors[i % colors.length] })
+            if (hasData) {
+                allData.push({ year, data, color: colors[i % colors.length] })
+            }
         }
     }
 
@@ -1005,9 +1139,14 @@ async function addMonthlyVolume() {
 async function loadPBs() {
     console.log("loadPBs() called")
 
-    const res = await authFetch(`/api/pbs`)
-    if (!res) return
-    const pbs = await res.json()
+    let pbs = []
+    if (isGuest) {
+        pbs = guestPBs
+    } else {
+        const res = await authFetch(`/api/pbs`)
+        if (!res) return
+        pbs = await res.json()
+    }
 
     const container = document.getElementById("pb-list")
     container.innerHTML = ""
