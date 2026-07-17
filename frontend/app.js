@@ -32,6 +32,9 @@ let guestGoals = []
 let guestPBs = []
 let guestYearlyStats = {}
 let guestMonthlyStats = { monthly_distance_km: 0, monthly_duration_min: 0 }
+let monthlyChart = null
+let yearlyChart = null
+let yearlyHiddenYears = new Set()
 
 // ===== Utilities =====
 function getDateString(date) {
@@ -158,6 +161,9 @@ function bootApp(){
     loadCalendar()
     loadGoals()
     loadStats()
+    // Re-render yearly chart when user toggles metric
+    const toggle = document.getElementById("toggle-volume-type")
+    if (toggle) toggle.onchange = () => loadYearlyStats()
     loadPersonalBests()
 }
 
@@ -912,6 +918,33 @@ async function loadStats(){
     loadYearlyStats()
 }
 
+async function getPreviousMonthsAverage(monthsBack = 3) {
+    let year = currentYear
+    let month = currentMonth
+    const distances = []
+    const durations = []
+
+    for (let i = 0; i < monthsBack; i++) {
+        month -= 1
+        if (month < 1) {
+            month = 12
+            year -= 1
+        }
+        const res = await authFetch(`/api/stats/month?year=${year}&month=${month}`)
+        if (!res) continue
+        const monthData = await res.json()
+        const d = Number(monthData.monthly_distance_km) || 0
+        const t = Number(monthData.monthly_duration_min) || 0
+        if (d > 0) distances.push(d)
+        if (t > 0) durations.push(t)
+    }
+
+    const avgDistance = distances.length ? distances.reduce((a, b) => a + b, 0) / distances.length : 0
+    const avgDuration = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0
+
+    return { avgDistance, avgDuration }
+}
+
 async function loadMonthlyStats() {
     let data = { monthly_distance_km: 0, monthly_duration_min: 0 }
     if (isGuest) {
@@ -922,63 +955,205 @@ async function loadMonthlyStats() {
         data = await res.json()
     }
 
-    const canvas = document.getElementById("statsChart")
-    const ctx = canvas.getContext("2d")
-    canvas.width = canvas.clientWidth
-    canvas.height = canvas.clientHeight
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.font = "14px Inter"
-
     const dist = data.monthly_distance_km || 0
     const dur = data.monthly_duration_min || 0
 
-    const baseX = 160
-    const barY1 = 20
-    const barY2 = 70
-    const maxWidth = canvas.width - baseX - 40
+    const canvas = document.getElementById("statsChart")
+    const ctx = canvas.getContext("2d")
 
-    const MAX_DISTANCE = 150
-    const MAX_DURATION = 1500
+    const safeDist = Number(dist) || 0
+    const safeDur = Number(dur) || 0
+    const displayDist = safeDist * 6
+    const displayDur = safeDur
 
-    const distScale = maxWidth / MAX_DISTANCE
-    const durScale  = maxWidth / MAX_DURATION
+    const { avgDistance, avgDuration } = await getPreviousMonthsAverage(3)
+    const MIN_DISTANCE_GOAL_KM = 10   // floor so the line isn't meaninglessly close to zero
+    const MIN_DURATION_GOAL_MIN = 60
 
-    const distWidth = Math.min(dist, MAX_DISTANCE) * distScale
-    const durWidth = Math.min(dur, MAX_DURATION) * durScale
+    let distanceGoal = avgDistance
+    let durationGoal = avgDuration
 
-    // Distance bar
-    ctx.fillStyle = "#22c55e"
-    ctx.fillRect(baseX, barY1, distWidth, 30)
+    // no history, or an average so small it wouldn't function as a meaningful goal
+    if (!distanceGoal || distanceGoal < MIN_DISTANCE_GOAL_KM) {
+        distanceGoal = MIN_DISTANCE_GOAL_KM
+    }
+    if (!durationGoal || durationGoal < MIN_DURATION_GOAL_MIN) {
+        durationGoal = MIN_DURATION_GOAL_MIN
+    }
 
-    // Time bar
-    ctx.fillStyle = "#60a5fa"
-    ctx.fillRect(baseX, barY2, durWidth, 30)
+    const chartData = {
+        labels: ["Distance (km)", "Time (min)"],
+        datasets: [{
+            label: 'Volume',
+            data: [0, 0],
+            backgroundColor: 'transparent',
+            borderRadius: 6,
+            barThickness: 30
+        }]
+    }
 
-    // labels
-    ctx.fillStyle = "#e5e7eb"
-    ctx.fillText("Distance (km)", 20, barY1+20)
-    ctx.fillText("Time (min)", 20, barY2+20)
+    // Manually size the canvas to avoid Chart.js responsive resize loops
+    const rect = canvas.getBoundingClientRect()
+    const maxCanvasSize = 4096
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
+    const preferredWidth = Math.min(Math.max(window.innerWidth * 0.82, 480), 1100)
+    const widthPx = Math.max(rect.width || canvas.clientWidth || 400, preferredWidth)
+    const heightPx = rect.height || canvas.clientHeight || 200
+    canvas.width = Math.min(Math.round(widthPx * dpr), maxCanvasSize)
+    canvas.height = Math.min(Math.round(heightPx * dpr), maxCanvasSize)
+    canvas.style.width = widthPx + 'px'
+    canvas.style.height = heightPx + 'px'
+    canvas.style.maxWidth = '100%'
 
-    ctx.fillText(dist.toFixed(1), baseX + distWidth + 8, barY1+20)
-    ctx.fillText(dur.toString(), baseX + durWidth+ 8, barY2+20)
+    const options = {
+        indexAxis: 'y',
+        responsive: false,
+        maintainAspectRatio: false,
+        layout: {
+            padding: { top: 16, bottom: 16, left: 8, right: 24 }
+        },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(2, 6, 23, 0.95)',
+                titleColor: '#f8fafc',
+                bodyColor: '#e2e8f0',
+                borderColor: 'rgba(148, 163, 184, 0.35)',
+                borderWidth: 1,
+                cornerRadius: 10,
+                callbacks: {
+                    label: (context) => {
+                        return context.dataIndex === 0
+                            ? `${safeDist.toFixed(1)} km`
+                            : `${safeDur.toFixed(0)} min`
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                display: false,
+                min: 0,
+                max: Math.max(1400, Math.max(displayDist, displayDur, distanceGoal * 6, durationGoal) + 220),
+                ticks: { display: false },
+                grid: { display: false, drawBorder: false }
+            },
+            y: {
+                ticks: {
+                    display: true,
+                    color: '#cbd5e1',
+                    font: { size: 12, family: 'Inter', weight: '600' }
+                },
+                grid: { display: false, drawBorder: false },
+                border: { display: false }
+            }
+        },
+        datasets: { bar: { categoryPercentage: 0.78, barPercentage: 0.9 } }
+    }
+
+    if (monthlyChart) {
+        monthlyChart.destroy()
+        monthlyChart = null
+    }
+
+    const GOAL_X_FRACTION = 0.72
+
+    const customBarsPlugin = {
+        id: 'customBarsPlugin',
+        afterDatasetsDraw(chart) {
+            const { ctx, chartArea } = chart
+            if (!chartArea) return
+            const meta = chart.getDatasetMeta(0)
+            const distanceBar = meta.data[0]
+            const durationBar = meta.data[1]
+            if (!distanceBar || !durationBar) return
+
+            const barHalfThickness = 30 / 2
+            const plotWidth = chartArea.right - chartArea.left
+            const goalPixelX = chartArea.left + plotWidth * GOAL_X_FRACTION
+
+            const drawRow = (bar, value, goal, gradientColors, accentColor) => {
+                const rowTop = bar.y - barHalfThickness
+                const rowBottom = bar.y + barHalfThickness
+
+                const ratio = goal > 0 ? value / goal : 0
+                const rawBarWidth = ratio * plotWidth * GOAL_X_FRACTION
+                const barWidth = Math.max(0, Math.min(rawBarWidth, plotWidth))
+
+                const gradient = ctx.createLinearGradient(chartArea.left, rowTop, chartArea.left + Math.max(barWidth, 80), rowBottom)
+                gradient.addColorStop(0, gradientColors[0])
+                gradient.addColorStop(1, gradientColors[1])
+
+                ctx.save()
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.55)'
+                ctx.beginPath()
+                ctx.roundRect(chartArea.left, rowTop - 4, plotWidth * GOAL_X_FRACTION + 8, rowBottom - rowTop + 8, 8)
+                ctx.fill()
+
+                ctx.shadowColor = 'rgba(15, 23, 42, 0.28)'
+                ctx.shadowBlur = 10
+                ctx.shadowOffsetY = 4
+                ctx.fillStyle = gradient
+                ctx.beginPath()
+                ctx.roundRect(chartArea.left, rowTop, barWidth, rowBottom - rowTop, 6)
+                ctx.fill()
+
+                ctx.shadowBlur = 0
+                ctx.shadowOffsetY = 0
+                ctx.strokeStyle = accentColor
+                ctx.lineWidth = 1
+                ctx.stroke()
+                ctx.restore()
+
+                return { rowTop, rowBottom, barRight: chartArea.left + barWidth }
+            }
+
+            const distRow = drawRow(distanceBar, safeDist, distanceGoal, ['#4ade80', '#16a34a'], '#4ade80')
+            const durRow = drawRow(durationBar, safeDur, durationGoal, ['#60a5fa', '#2563eb'], '#60a5fa')
+
+            ctx.save()
+            ctx.strokeStyle = 'rgba(184, 201, 226, 0.7)'
+            ctx.lineWidth = 1.25
+            ctx.setLineDash([5, 4])
+            ctx.beginPath()
+            ctx.moveTo(goalPixelX, distRow.rowTop - 10)
+            ctx.lineTo(goalPixelX, distRow.rowBottom + 10)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(goalPixelX, durRow.rowTop - 10)
+            ctx.lineTo(goalPixelX, durRow.rowBottom + 10)
+            ctx.stroke()
+            ctx.setLineDash([])
+            ctx.restore()
+
+            ctx.save()
+            ctx.font = '600 12px Inter'
+            ctx.textAlign = 'left'
+            ctx.fillStyle = '#f8fafc'
+            const distValueText = `${safeDist.toFixed(1)} km`
+            const durValueText = `${safeDur.toFixed(0)} min`
+            const distLabelX = Math.min(distRow.barRight + 8, chartArea.right - ctx.measureText(distValueText).width - 12)
+            const durLabelX = Math.min(durRow.barRight + 8, chartArea.right - ctx.measureText(durValueText).width - 12)
+            ctx.fillText(distValueText, distLabelX, distanceBar.y + 4)
+            ctx.fillText(durValueText, durLabelX, durationBar.y + 4)
+
+            ctx.font = '11px Inter'
+            ctx.fillStyle = '#94a3b8'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'bottom'
+            ctx.fillText(`${distanceGoal.toFixed(1)} km goal`, goalPixelX, distRow.rowTop - 12)
+            ctx.textBaseline = 'top'
+            ctx.fillText(`${durationGoal.toFixed(0)} min goal`, goalPixelX, durRow.rowBottom + 12)
+            ctx.restore()
+        }
+    }
+
+    monthlyChart = new Chart(ctx, { type: 'bar', data: chartData, options, plugins: [customBarsPlugin] })
 }
 
 async function loadYearlyStats() {
     const canvas = document.getElementById("yearlyChart")
     const ctx = canvas.getContext("2d")
-
-    const rect = canvas.getBoundingClientRect()
-    const ratio = window.devicePixelRatio || 1
-
-    canvas.width = rect.width * ratio
-    canvas.height = rect.height * ratio
-
-    canvas.style.width = rect.width + "px"
-    canvas.style.height = rect.height + "px"
-
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
-    ctx.clearRect(0, 0, rect.width, rect.height)
 
     const toggle = document.getElementById("toggle-volume-type")
     const metric = toggle && toggle.checked ? "duration" : "distance"
@@ -994,7 +1169,7 @@ async function loadYearlyStats() {
     let allData = []
 
     if (isGuest) {
-        const guestYears = Object.keys(guestYearlyStats).map(Number)//.sort()
+        const guestYears = Object.keys(guestYearlyStats).map(Number).sort((a, b) => a - b)
         guestYears.forEach((year, i) => {
             const data = guestYearlyStats[year]
             const hasData = data.some(m => (metric === "distance" ? m.distance_km : m.duration_min) > 0)
@@ -1023,6 +1198,12 @@ async function loadYearlyStats() {
             }
         }
     }
+
+    // oldest years first so legend increments left-to-right
+    allData.sort((a, b) => a.year - b.year)
+
+    const visibleCount = Math.min(5, allData.length)
+    const hideCount = allData.length - visibleCount
 
     // Update yearly totals table
     const metricHeader = document.getElementById("yearly-metric-header")
@@ -1054,121 +1235,99 @@ async function loadYearlyStats() {
         tableBody.appendChild(row)
     })
 
-    const width = rect.width
-    const height = rect.height
+    const labels = MONTH_NAMES.map(m => m.substring(0,3))
+    const nextHiddenYears = new Set()
 
-    const padding = 50
-    const baseY = height - padding
-    const chartHeight = height - padding * 2
-    const chartWidth = width - padding * 2
+    allData.forEach((item, idx) => {
+        const yearLabel = String(item.year)
+        const hadPreviousState = yearlyHiddenYears.has(yearLabel)
 
-    const maxVal = Math.max(
-        ...allData.flatMap(y =>
-            y.data.map(m =>
-                metric === "distance" ? m.distance_km : m.duration_min
-            )
-        ),
-        1
-    )
-
-    const scaleY = chartHeight / maxVal
-    const stepX = chartWidth / 11
-
-    // axes
-    ctx.strokeStyle = "#94a3b8"
-    ctx.beginPath()
-    ctx.moveTo(padding, padding)
-    ctx.lineTo(padding, baseY)
-    ctx.lineTo(width - padding, baseY)
-    ctx.stroke()
-
-    // y-axis ticks
-    ctx.fillStyle = "#e5e7eb"
-    ctx.font = "12px Inter"
-
-    const steps = 5
-    for (let i = 0; i <= steps; i++) {
-        const val = (maxVal / steps) * i
-        const y = baseY - val * scaleY
-
-        ctx.fillText(val.toFixed(0), 30, y + 4)
-
-        ctx.strokeStyle = "#334155"
-        ctx.beginPath()
-        ctx.moveTo(padding, y)
-        ctx.lineTo(width - padding, y)
-        ctx.stroke()
-    }
-
-    // month labels
-    ctx.fillStyle = "#e5e7eb"
-    for (let m = 0; m < 12; m++) {
-        const x = padding + m * stepX
-        ctx.fillText(MONTH_NAMES[m].substring(0, 3), x - 8, baseY + 20)
-    }
-
-    // draw lines
-    allData.forEach(y => {
-        ctx.strokeStyle = y.color
-        ctx.fillStyle = y.color
-        ctx.lineWidth = 2
-        ctx.beginPath()
-
-        y.data.forEach((m, i) => {
-            const value = metric === "distance"
-                ? m.distance_km
-                : m.duration_min
-
-            const x = padding + i * stepX
-            const yPos = baseY - value * scaleY
-
-            if (i === 0) ctx.moveTo(x, yPos)
-            else ctx.lineTo(x, yPos)
-        })
-
-        ctx.stroke()
-
-        // markers
-        y.data.forEach((m, i) => {
-            const value = metric === "distance"
-                ? m.distance_km
-                : m.duration_min
-
-            const x = padding + i * stepX
-            const yPos = baseY - value * scaleY
-
-            ctx.beginPath()
-            ctx.arc(x, yPos, 4, 0, Math.PI * 2)
-            ctx.fill()
-        })
-
-        // legend
-        ctx.fillText(
-            y.year,
-            width - selectedYears.length * 30 + selectedYears.indexOf(y.year) * 30,
-            20
-        )
+        if (hadPreviousState) {
+            nextHiddenYears.add(yearLabel)
+        } else if (idx < hideCount) {
+            nextHiddenYears.add(yearLabel)
+        }
     })
 
-    // axis labels
-    ctx.fillStyle = "#e5e7eb"
-    ctx.font = "14px Inter"
-    ctx.fillText("Month", width / 2 - 30, height - 10)
+    yearlyHiddenYears = nextHiddenYears
 
-    ctx.save()
-    ctx.translate(15, height / 2)
-    ctx.rotate(-Math.PI / 2)
-    ctx.textAlign = "center"
+    const datasets = allData.map((item) => ({
+        label: String(item.year),
+        data: item.data.map(m => metric === 'distance' ? m.distance_km : m.duration_min),
+        borderColor: item.color,
+        backgroundColor: item.color,
+        fill: false,
+        tension: 0.2,
+        pointRadius: 3,
+        hidden: yearlyHiddenYears.has(String(item.year))
+    }))
 
-    ctx.fillText(
-        metric === "distance" ? "Distance (km)" : "Duration (min)",
-        0,
-        0
-    )
+    const chartData = { labels, datasets }
 
-    ctx.restore()
+    // Manually size yearly canvas and create chart with responsive disabled
+    const rectY = canvas.getBoundingClientRect()
+    const maxCanvasSize = 4096
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
+    canvas.width = Math.min(Math.round(rectY.width * dpr), maxCanvasSize)
+    canvas.height = Math.min(Math.round((rectY.height || 350) * dpr), maxCanvasSize)
+    canvas.style.width = rectY.width + 'px'
+    canvas.style.height = (rectY.height || 350) + 'px'
 
-    ctx.textAlign = "left"
+    const optionsY = {
+        responsive: false,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: { color: '#d3d6da' },
+                onClick: (event, legendItem, legend) => {
+                    const chart = legend.chart
+                    const datasetIndex = legendItem.datasetIndex
+                    const yearLabel = String(allData[datasetIndex]?.year)
+
+                    if (!yearLabel) return
+
+                    if (yearlyHiddenYears.has(yearLabel)) {
+                        yearlyHiddenYears.delete(yearLabel)
+                    } else {
+                        yearlyHiddenYears.add(yearLabel)
+                    }
+
+                    chart.data.datasets[datasetIndex].hidden = yearlyHiddenYears.has(yearLabel)
+                    chart.update()
+                }
+            },
+            tooltip: { mode: 'index', intersect: false }
+        },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        scales: {
+            x: {
+                ticks: {
+                    color: '#d3d6da',
+                    font: { size: 12, family: 'Inter', weight: '400' }
+                },
+                border: { display: false }
+            },
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: v => (metric === 'distance' ? Number(v).toFixed(1) : Number(v).toFixed(0)),
+                    color: '#d3d6da',
+                    padding: 6,
+                    font: { size: 12, family: 'Inter', weight: '400' }
+                },
+                grid: { color: 'rgba(148, 163, 184, 0.35)', drawTicks: false },
+                border: { display: false },
+                title: { display: true, text: metric === 'distance' ? 'Distance (km)' : 'Duration (min)', color: '#d3d6da', font: { size: 14, family: 'Inter', weight: '600' } }
+            }
+        }
+    }
+
+    if (yearlyChart) {
+        yearlyChart.destroy()
+        yearlyChart = null
+    }
+    yearlyChart = new Chart(ctx, { type: 'line', data: chartData, options: optionsY })
 }
 
 async function addMonthlyVolume() {

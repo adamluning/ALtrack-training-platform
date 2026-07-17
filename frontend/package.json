@@ -1,0 +1,9 @@
+{
+  "name": "train-platform-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "chart.js": "^4.3.0"
+  },
+  "scripts": {}
+}
