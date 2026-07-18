@@ -996,8 +996,7 @@ async function loadMonthlyStats() {
     const rect = canvas.getBoundingClientRect()
     const maxCanvasSize = 4096
     const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
-    const preferredWidth = Math.min(Math.max(window.innerWidth * 0.82, 480), 1100)
-    const widthPx = Math.max(rect.width || canvas.clientWidth || 400, preferredWidth)
+    const widthPx = rect.width || canvas.clientWidth || 400
     const heightPx = rect.height || canvas.clientHeight || 200
     canvas.width = Math.min(Math.round(widthPx * dpr), maxCanvasSize)
     canvas.height = Math.min(Math.round(heightPx * dpr), maxCanvasSize)
@@ -1274,6 +1273,7 @@ async function loadYearlyStats() {
     canvas.style.height = (rectY.height || 350) + 'px'
 
     const optionsY = {
+        devicePixelRatio: dpr,
         responsive: false,
         maintainAspectRatio: false,
         plugins: {
