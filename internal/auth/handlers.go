@@ -39,6 +39,15 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
+	if len(req.Password) < 8 {
+		c.JSON(400, gin.H{"error": "password must be at least 8 characters"})
+		return
+	}
+	if len(req.Password) > 72 {
+		c.JSON(400, gin.H{"error": "password must be at most 72 characters"})
+		return
+	}
+
 	hash, err := HashPassword(req.Password)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "hash failed"})

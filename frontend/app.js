@@ -383,6 +383,10 @@ async function register() {
         setRegisterError("Enter a valid email")
         return
     }
+    if(password.length < 8){
+        setRegisterError("Password must be at least 8 characters")
+        return
+    }
 
     try {
         const res = await fetch("/api/auth/register", {
@@ -558,7 +562,7 @@ function renderSessionCard(s){
     return `
     <div class="session-card">
         <div class="session-header">
-        <div class="session-title">${s.title}</div>
+        <div class="session-title">${htmlEscape(s.title)}</div>
             <div>
                 ${s.completed 
                 ? `✅ <span class="session-volume">🏃 ${s.distance_km.toFixed(1)} km · ⏱ ${s.duration_min} min</span>`
@@ -567,9 +571,9 @@ function renderSessionCard(s){
             </div>
         </div>
 
-        <div class="session-desc">${s.description}</div>
+        <div class="session-desc">${htmlEscape(s.description)}</div>
 
-        ${s.notes ? `<div class="session-notes">📝 ${s.notes}</div>` : ""}
+        ${s.notes ? `<div class="session-notes">📝 ${htmlEscape(s.notes)}</div>` : ""}
 
         <div class="session-actions">
             ${leftActions.length ? `<div class="session-left-actions">${leftActions.join('')}</div>` : ""}
@@ -850,9 +854,9 @@ async function loadGoals() {
             const div = document.createElement("div")
             div.className = "goal-card"
             div.innerHTML = `
-                <div class="goal-col goal-col-title"><b>${g.title}</b></div>
-                <div class="goal-col goal-col-target">${g.target}</div>
-                <div class="goal-col goal-col-end">${g.end_date}</div>
+                <div class="goal-col goal-col-title"><b>${htmlEscape(g.title)}</b></div>
+                <div class="goal-col goal-col-target">${htmlEscape(g.target)}</div>
+                <div class="goal-col goal-col-end">${htmlEscape(g.end_date)}</div>
                 <div class="goal-col goal-col-actions"><button ${isGuest ? "disabled" : `onclick=\"deleteGoal(${g.id})\"`}>Delete</button></div>
             `
             container.appendChild(div)
