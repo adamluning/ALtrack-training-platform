@@ -549,31 +549,39 @@ function renderSessionCard(s){
     const disabledAttr = isGuest ? "disabled" : ""
 
     if (!s.completed) {
-        leftActions.push(`<button ${disabledAttr} ${canEditSession ? `onclick="completeSession(${s.id})"` : ""}>Complete</button>`)
+        leftActions.push(`<button class="btn-primary" ${disabledAttr} ${canEditSession ? `onclick="completeSession(${s.id})"` : ""}>Complete</button>`)
     }
     if (!s.notes) {
-        leftActions.push(`<input id="note-${s.id}" placeholder="Add note"><button ${disabledAttr} ${canEditSession ? `onclick="addNote(${s.id})"` : ""}>Save note</button>`)
+        leftActions.push(`<input id="note-${s.id}" placeholder="Add note"><button class="btn-secondary" ${disabledAttr} ${canEditSession ? `onclick="addNote(${s.id})"` : ""}>Save note</button>`)
     }
 
     const rightActions = []
     rightActions.push(`<button class="edit-session-button" ${disabledAttr} ${canEditSession ? `onclick="editSession(${s.id})"` : ""}>Edit session</button>`)
     rightActions.push(`<button class="delete-session-button" ${disabledAttr} ${canEditSession ? `onclick="deleteSession(${s.id})"` : ""}>Delete session</button>`)
 
+    const checkIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`
+    const clockIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`
+    const runIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="17" cy="5" r="2"/><path d="m14 22 2-9-3-3 1-6M9 15l3-3 4 1M6 22l3-6"/></svg>`
+    const timerIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>`
+    const noteIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`
+
+    const statusMarkup = s.completed
+        ? `<span class="status-badge completed">${checkIcon} Done</span>
+           <span class="session-volume">${runIcon} ${s.distance_km.toFixed(1)} km &nbsp;·&nbsp; ${timerIcon} ${s.duration_min} min</span>`
+        : `<span class="status-badge pending">${clockIcon} Pending</span>`
+
     return `
     <div class="session-card">
         <div class="session-header">
         <div class="session-title">${htmlEscape(s.title)}</div>
-            <div>
-                ${s.completed 
-                ? `✅ <span class="session-volume">🏃 ${s.distance_km.toFixed(1)} km · ⏱ ${s.duration_min} min</span>`
-                : `⏳`
-                }
+            <div style="display:flex; align-items:center;">
+                ${statusMarkup}
             </div>
         </div>
 
         <div class="session-desc">${htmlEscape(s.description)}</div>
 
-        ${s.notes ? `<div class="session-notes">📝 ${htmlEscape(s.notes)}</div>` : ""}
+        ${s.notes ? `<div class="session-notes">${noteIcon} ${htmlEscape(s.notes)}</div>` : ""}
 
         <div class="session-actions">
             ${leftActions.length ? `<div class="session-left-actions">${leftActions.join('')}</div>` : ""}
@@ -857,7 +865,7 @@ async function loadGoals() {
                 <div class="goal-col goal-col-title"><b>${htmlEscape(g.title)}</b></div>
                 <div class="goal-col goal-col-target">${htmlEscape(g.target)}</div>
                 <div class="goal-col goal-col-end">${htmlEscape(g.end_date)}</div>
-                <div class="goal-col goal-col-actions"><button ${isGuest ? "disabled" : `onclick=\"deleteGoal(${g.id})\"`}>Delete</button></div>
+                <div class="goal-col goal-col-actions"><button class="btn-danger" ${isGuest ? "disabled" : `onclick=\"deleteGoal(${g.id})\"`}>Delete</button></div>
             `
             container.appendChild(div)
         });
@@ -971,13 +979,12 @@ async function loadMonthlyStats() {
     const displayDur = safeDur
 
     const { avgDistance, avgDuration } = await getPreviousMonthsAverage(3)
-    const MIN_DISTANCE_GOAL_KM = 10   // floor so the line isn't meaninglessly close to zero
+    const MIN_DISTANCE_GOAL_KM = 10
     const MIN_DURATION_GOAL_MIN = 60
 
     let distanceGoal = avgDistance
     let durationGoal = avgDuration
 
-    // no history, or an average so small it wouldn't function as a meaningful goal
     if (!distanceGoal || distanceGoal < MIN_DISTANCE_GOAL_KM) {
         distanceGoal = MIN_DISTANCE_GOAL_KM
     }
@@ -996,18 +1003,22 @@ async function loadMonthlyStats() {
         }]
     }
 
-    // Manually size the canvas to avoid Chart.js responsive resize loops
     const rect = canvas.getBoundingClientRect()
     const maxCanvasSize = 4096
     const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
-    const preferredWidth = Math.min(Math.max(window.innerWidth * 0.82, 480), 1100)
-    const widthPx = Math.max(rect.width || canvas.clientWidth || 400, preferredWidth)
-    const heightPx = rect.height || canvas.clientHeight || 200
+    const widthPx = rect.width || canvas.clientWidth || 400
+    const heightPx = rect.height || canvas.clientHeight || 156
+
     canvas.width = Math.min(Math.round(widthPx * dpr), maxCanvasSize)
     canvas.height = Math.min(Math.round(heightPx * dpr), maxCanvasSize)
-    canvas.style.width = widthPx + 'px'
+    canvas.style.width = '100%'
     canvas.style.height = heightPx + 'px'
-    canvas.style.maxWidth = '100%'
+
+    // Fixed font sizes — intentionally NOT tied to canvas or window width,
+    // so text stays equally readable regardless of how narrow the chart gets.
+    const valueFontPx = 13
+    const goalFontPx = 12
+    const tickFontPx = 13
 
     const options = {
         indexAxis: 'y',
@@ -1046,7 +1057,7 @@ async function loadMonthlyStats() {
                 ticks: {
                     display: true,
                     color: '#cbd5e1',
-                    font: { size: 12, family: 'Inter', weight: '600' }
+                    font: { size: tickFontPx, family: 'Inter', weight: '600' }
                 },
                 grid: { display: false, drawBorder: false },
                 border: { display: false }
@@ -1131,7 +1142,7 @@ async function loadMonthlyStats() {
             ctx.restore()
 
             ctx.save()
-            ctx.font = '600 12px Inter'
+            ctx.font = `600 ${valueFontPx}px Inter`
             ctx.textAlign = 'left'
             ctx.fillStyle = '#f8fafc'
             const distValueText = `${safeDist.toFixed(1)} km`
@@ -1141,7 +1152,7 @@ async function loadMonthlyStats() {
             ctx.fillText(distValueText, distLabelX, distanceBar.y + 4)
             ctx.fillText(durValueText, durLabelX, durationBar.y + 4)
 
-            ctx.font = '11px Inter'
+            ctx.font = `${goalFontPx}px Inter`
             ctx.fillStyle = '#94a3b8'
             ctx.textAlign = 'center'
             ctx.textBaseline = 'bottom'
@@ -1410,7 +1421,7 @@ async function loadPersonalBests() {
             div.innerHTML = `
                 <div class="pb-col pb-col-distance"><b>${pb.distance} km</b></div>
                 <div class="pb-col pb-col-time">${pb.time}</div>
-                <div class="pb-col pb-col-actions"><button ${isGuest ? "disabled" : `onclick=\"deletePersonalBest(${pb.id})\"`}>Delete</button></div>
+                <div class="pb-col pb-col-actions"><button class="btn-danger" ${isGuest ? "disabled" : `onclick=\"deletePersonalBest(${pb.id})\"`}>Delete</button></div>
             `
             container.appendChild(div)
         });

@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ALtrack Training Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,49 +16,60 @@
 
 <!--Authentication-->
 <div id="auth-panel">
+    <div class="auth-brand">
+        <div class="auth-logo-mark"></div>
+        <h1 class="auth-title">ALtrack</h1>
+        <p class="auth-tagline">Track your training. See your progress.</p>
+    </div>
     <form onsubmit="login(); return false;">
-        <h2>Login</h2>
-        <input id="auth-email" placeholder="Email">
+        <h2>Log in</h2>
+        <input id="auth-email" placeholder="Email" autocomplete="username">
         <div class="password-wrapper">
-            <input id="auth-password" type="password" placeholder="Password">
+            <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password">
             <button type="button" class="password-toggle"
                 onmousedown="togglePassword(true, 'auth-password')"
                 onmouseup="togglePassword(false, 'auth-password')"
                 onmouseleave="togglePassword(false, 'auth-password')"
                 ontouchstart="togglePassword(true, 'auth-password')"
-                ontouchend="togglePassword(false, 'auth-password')">
-                👁
+                ontouchend="togglePassword(false, 'auth-password')"
+                aria-label="Show password">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
         </div>
-        <button type="submit">Login</button>
+        <button type="submit" class="btn-primary">Log in</button>
         <div id="auth-error" class="auth-error" style="display:none;"></div>
 
-        <p>or</p>
+        <div class="auth-divider"><span>or</span></div>
 
-        <button type="button" onclick="showRegister()">Create account</button>
-        <p></p>
-        <button type="button" onclick="guestLogin()">Login as Guest</button>
+        <button type="button" class="btn-secondary" onclick="showRegister()">Create account</button>
+        <button type="button" class="btn-ghost" onclick="guestLogin()">Continue as guest</button>
     </form>
 </div>
 
 <div id="register-panel" style="display:none;">
+    <div class="auth-brand">
+        <div class="auth-logo-mark"></div>
+        <h1 class="auth-title">ALtrack</h1>
+        <p class="auth-tagline">Create your account to get started.</p>
+    </div>
     <form onsubmit="register(); return false;">
         <h2>Register</h2>
-        <input id="reg-email" placeholder="Email">
+        <input id="reg-email" placeholder="Email" autocomplete="username">
         <div class="password-wrapper">
-            <input id="reg-password" type="password" placeholder="Password">
+            <input id="reg-password" type="password" placeholder="Password" autocomplete="new-password">
             <button type="button" class="password-toggle"
                 onmousedown="togglePassword(true, 'reg-password')"
                 onmouseup="togglePassword(false, 'reg-password')"
                 onmouseleave="togglePassword(false, 'reg-password')"
                 ontouchstart="togglePassword(true, 'reg-password')"
-                ontouchend="togglePassword(false, 'reg-password')">
-                👁
+                ontouchend="togglePassword(false, 'reg-password')"
+                aria-label="Show password">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
         </div>
-        <button type="submit">Register</button>
+        <button type="submit" class="btn-primary">Register</button>
         <div id="register-error" class="auth-error" style="display:none;"></div>
-        <button type="button" onclick="showLogin()">Back</button>
+        <button type="button" class="btn-ghost" onclick="showLogin()">Back to login</button>
     </form>
 </div>
 
@@ -62,116 +77,127 @@
 <!--Main application-->
 <div id="app-root" style="display:none;">
     <div id="topbar">
-        <div id="logo">ALtrack Training Platform</div>
+        <div id="logo">ALtrack</div>
 
         <div id="topbar-actions">
-            <button onclick="logout()">Logout</button>
+            <button class="btn-danger" onclick="logout()">Logout</button>
         </div>
     </div>
     <div id="app-message" class="auth-error" style="display:none;"></div>
 
-    <div class="panel" id="goal-panel">
-        <h2>Goals</h2>
-        <div id="goals-list"></div>
-        <div class="panel" id="add-goal-panel">
-            <h3>Add goal</h3>
-            <form onsubmit="addGoal(); return false;" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                <input id="goal-title" placeholder="Title">
-                <input id="goal-target" placeholder="Target" style="width: 300px;">
-                <input id="goal-date" type="date">
-                <button type="submit">Add</button>
-            </form>
-        </div>
-    </div>
+    <div id="app-content">
 
-    <div class="panel" id="calendar-container">
-        <h2>Calendar</h2>
-        <div id="calendar-header">
-            <button onclick="prevMonth()">◀</button>
-            <div id="month-label"></div>
-            <button onclick="nextMonth()">▶</button>
-        </div>
-        <div id="calendar-grid"></div>
-        
-
-        <div id="day-panel">
-            <h5> </h5>
-            <h3 id="selected-day"></h3>
-            <div id="day-sessions"></div>
-        </div>
-        
-        <div class="panel" id="add-session-panel">
-            <h3>Add session</h3>
-            <form onsubmit="addSession(); return false;" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                <input id="session-title" placeholder="Title">
-                <input id="session-desc" placeholder="Description" style="width: 400px;">
-                <input id="session-date" type="date">
-                <button type="submit">Add</button>
-            </form>
-        </div>
-    </div>
-
-    <div class="panel" id="right-panel">
-
-        <div id="stats">
-            <h2>Stats</h2>
-        </div>
-
-        <div class="panel" id="monthly-panel">
-            <h3>Volume this month</h3>
-            <canvas id="statsChart"></canvas>
-        </div>
-
-        <div class="panel" id="yearly-panel">
-            <h3>Yearly Volume</h3>
-            <div id="yearly-toggle" style="margin-bottom:10px; display:flex; align-items:center; gap:10px;">
-                <label class="switch">
-                    <input type="checkbox" id="toggle-volume-type">
-                    <span class="slider round"></span>
-                </label>
-                <span id="toggle-label">Show by Duration</span>
-            </div>
-
-            <canvas id="yearlyChart"></canvas>
-            
-            <div id="yearly-totals-table" style="margin-bottom:20px; overflow-x:auto;">
-                <table class="yearly-table">
-                    <thead>
-                        <tr>
-                            <th>Year</th>
-                            <th id="yearly-metric-header">Total Distance (km)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="yearly-totals-body">
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="panel" id="manual-volume">
-                <h4>Add Monthly Volume</h4>
-                <h5>Add volume as an entire block without creating sessions. This creates a synthetic session on the first day of the month.</h5>
-
-                <form onsubmit="addMonthlyVolume(); return false;" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                    <input id="mv-year" type="number" min="1900" max="2100" placeholder="Year" style="width:90px;">
-                    <input id="mv-month" type="number" min="1" max="12" placeholder="Month" style="width:90px;">
-                    <input id="mv-distance" type="number" min="0" step="0.1" placeholder="Distance km">
-                    <input id="mv-duration" type="number" min="0" placeholder="Duration min">
-                    <button type="submit">Add</button>
+        <div class="panel" id="goal-panel">
+            <h2>Goals</h2>
+            <div id="goals-list"></div>
+            <div class="panel panel-nested" id="add-goal-panel">
+                <h3>Add goal</h3>
+                <form onsubmit="addGoal(); return false;" class="inline-form">
+                    <input id="goal-title" placeholder="Title">
+                    <input id="goal-target" placeholder="Target" style="width: 300px;">
+                    <input id="goal-date" type="date">
+                    <button type="submit" class="btn-primary">Add</button>
                 </form>
             </div>
         </div>
-    </div>
 
-    <div class="panel" id="pb-panel">
-        <h2>Personal Bests</h2>
+        <div id="app-grid">
+            <div id="app-grid-main">
+                <div class="panel" id="calendar-container">
+                    <h2>Calendar</h2>
+                    <div id="calendar-header">
+                        <button class="btn-icon" onclick="prevMonth()" aria-label="Previous month">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                        </button>
+                        <div id="month-label"></div>
+                        <button class="btn-icon" onclick="nextMonth()" aria-label="Next month">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                        </button>
+                    </div>
+                    <div id="calendar-grid"></div>
 
-        <form id="pb-form" onsubmit="addPersonalBest(); return false;" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-            <input id="pb-distance" type="number" min="0" step="0.1" placeholder="Distance (km)">
-            <input id="pb-time" type="text" placeholder="hh:mm:ss">
-            <button type="submit">Add PB</button>
-        </form>
 
-        <div id="pb-list"></div>
+                    <div id="day-panel">
+                        <h3 id="selected-day"></h3>
+                        <div id="day-sessions"></div>
+                    </div>
+
+                    <div class="panel panel-nested" id="add-session-panel">
+                        <h3>Add session</h3>
+                        <form onsubmit="addSession(); return false;" class="inline-form">
+                            <input id="session-title" placeholder="Title">
+                            <input id="session-desc" placeholder="Description" style="width: 400px;">
+                            <input id="session-date" type="date">
+                            <button type="submit" class="btn-primary">Add</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="panel" id="pb-panel">
+                    <h2>Personal Bests</h2>
+
+                    <form id="pb-form" onsubmit="addPersonalBest(); return false;" class="inline-form">
+                        <input id="pb-distance" type="number" min="0" step="0.1" placeholder="Distance (km)">
+                        <input id="pb-time" type="text" placeholder="hh:mm:ss">
+                        <button type="submit" class="btn-primary">Add PB</button>
+                    </form>
+
+                    <div id="pb-list"></div>
+                </div>
+            </div>
+
+            <div class="panel" id="right-panel">
+
+                <div id="stats">
+                    <h2>Stats</h2>
+                </div>
+
+                <div class="panel panel-nested" id="monthly-panel">
+                    <h3>Volume this month</h3>
+                    <canvas id="statsChart"></canvas>
+                </div>
+
+                <div class="panel panel-nested" id="yearly-panel">
+                    <h3>Yearly Volume</h3>
+                    <div id="yearly-toggle">
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-volume-type">
+                            <span class="slider round"></span>
+                        </label>
+                        <span id="toggle-label">Show by Duration</span>
+                    </div>
+
+                    <canvas id="yearlyChart"></canvas>
+
+                    <div id="yearly-totals-table">
+                        <table class="yearly-table">
+                            <thead>
+                                <tr>
+                                    <th>Year</th>
+                                    <th id="yearly-metric-header">Total Distance (km)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="yearly-totals-body">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel panel-nested" id="manual-volume">
+                        <h4>Add Monthly Volume</h4>
+                        <p class="hint-text">Add volume as an entire block without creating sessions. This creates a synthetic session on the first day of the month.</p>
+
+                        <form onsubmit="addMonthlyVolume(); return false;" class="inline-form">
+                            <input id="mv-year" type="number" min="1900" max="2100" placeholder="Year" style="width:90px;">
+                            <input id="mv-month" type="number" min="1" max="12" placeholder="Month" style="width:90px;">
+                            <input id="mv-distance" type="number" min="0" step="0.1" placeholder="Distance km">
+                            <input id="mv-duration" type="number" min="0" placeholder="Duration min">
+                            <button type="submit" class="btn-primary">Add</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 </div>
