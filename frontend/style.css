@@ -857,7 +857,7 @@ button:disabled:hover{
 }
 
 .goal-col-title{
-  flex: 2 1 140px;
+  flex: 1 1 90px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -871,7 +871,7 @@ button:disabled:hover{
   white-space: nowrap;
 }
 .goal-col-end{
-  flex: 2 1 110px;
+  flex: 2 1 90px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -910,8 +910,8 @@ button:disabled:hover{
   border-bottom:1px solid var(--border);
 }
 
-.pb-col-distance{ width:120px; flex:0 0 120px; }
-.pb-col-time{ flex:1 1 200px; font-variant-numeric: tabular-nums; }
+.pb-col-distance{ flex:1 1 9px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-col-time{ flex:1 1 90px; min-width: 0; font-variant-numeric: tabular-nums; }
 .pb-col-actions{ width:90px; flex:0 0 90px; text-align:right; }
 
 /* ===== Stats ===== */

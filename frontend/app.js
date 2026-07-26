@@ -34,6 +34,10 @@ let guestYearlyStats = {}
 let guestMonthlyStats = { monthly_distance_km: 0, monthly_duration_min: 0 }
 let monthlyChart = null
 let yearlyChart = null
+let cachedMonthlyChartInputs = null // { safeDist, safeDur, distanceGoal, durationGoal }
+let cachedYearlyStatsByYear = null // { year: [ {distance_km, duration_min} x12 ], ... }
+let monthlyChartResizeObserver = null
+let yearlyChartResizeObserver = null
 let yearlyHiddenYears = new Set()
 
 // ===== Utilities =====
@@ -161,9 +165,9 @@ function bootApp(){
     loadCalendar()
     loadGoals()
     loadStats()
-    // Re-render yearly chart when user toggles metric
+    setupChartResizeObservers()
     const toggle = document.getElementById("toggle-volume-type")
-    if (toggle) toggle.onchange = () => loadYearlyStats()
+    if (toggle) toggle.onchange = () => renderYearlyChart()
     loadPersonalBests()
 }
 
@@ -219,10 +223,6 @@ window.onload = () => {
         document.getElementById("auth-panel").style.display = "block"
     }
 }
-
-window.addEventListener("resize", () => {
-    loadStats()
-})
 
 function updateTopbar() {
     const topBar = document.getElementById("topbar")
@@ -930,6 +930,29 @@ async function loadStats(){
     loadYearlyStats()
 }
 
+function setupChartResizeObservers() {
+    const monthlyContainer = document.getElementById("monthly-panel")
+    const yearlyContainer = document.getElementById("yearly-panel")
+
+    if (monthlyContainer && !monthlyChartResizeObserver) {
+        let rafId = null
+        monthlyChartResizeObserver = new ResizeObserver(() => {
+            if (rafId) cancelAnimationFrame(rafId)
+            rafId = requestAnimationFrame(() => renderMonthlyChart())
+        })
+        monthlyChartResizeObserver.observe(monthlyContainer)
+    }
+
+    if (yearlyContainer && !yearlyChartResizeObserver) {
+        let rafId = null
+        yearlyChartResizeObserver = new ResizeObserver(() => {
+            if (rafId) cancelAnimationFrame(rafId)
+            rafId = requestAnimationFrame(() => renderYearlyChart())
+        })
+        yearlyChartResizeObserver.observe(yearlyContainer)
+    }
+}
+
 async function getPreviousMonthsAverage(monthsBack = 3) {
     let year = currentYear
     let month = currentMonth
@@ -957,6 +980,13 @@ async function getPreviousMonthsAverage(monthsBack = 3) {
     return { avgDistance, avgDuration }
 }
 
+function getContentWidth(el) {
+    const style = window.getComputedStyle(el)
+    const paddingLeft = parseFloat(style.paddingLeft) || 0
+    const paddingRight = parseFloat(style.paddingRight) || 0
+    return el.clientWidth - paddingLeft - paddingRight
+}
+
 async function loadMonthlyStats() {
     let data = { monthly_distance_km: 0, monthly_duration_min: 0 }
     if (isGuest) {
@@ -967,16 +997,8 @@ async function loadMonthlyStats() {
         data = await res.json()
     }
 
-    const dist = data.monthly_distance_km || 0
-    const dur = data.monthly_duration_min || 0
-
-    const canvas = document.getElementById("statsChart")
-    const ctx = canvas.getContext("2d")
-
-    const safeDist = Number(dist) || 0
-    const safeDur = Number(dur) || 0
-    const displayDist = safeDist * 6
-    const displayDur = safeDur
+    const safeDist = Number(data.monthly_distance_km) || 0
+    const safeDur = Number(data.monthly_duration_min) || 0
 
     const { avgDistance, avgDuration } = await getPreviousMonthsAverage(3)
     const MIN_DISTANCE_GOAL_KM = 10
@@ -984,12 +1006,30 @@ async function loadMonthlyStats() {
 
     let distanceGoal = avgDistance
     let durationGoal = avgDuration
+    if (!distanceGoal || distanceGoal < MIN_DISTANCE_GOAL_KM) distanceGoal = MIN_DISTANCE_GOAL_KM
+    if (!durationGoal || durationGoal < MIN_DURATION_GOAL_MIN) durationGoal = MIN_DURATION_GOAL_MIN
 
-    if (!distanceGoal || distanceGoal < MIN_DISTANCE_GOAL_KM) {
-        distanceGoal = MIN_DISTANCE_GOAL_KM
-    }
-    if (!durationGoal || durationGoal < MIN_DURATION_GOAL_MIN) {
-        durationGoal = MIN_DURATION_GOAL_MIN
+    // Cache the resolved values so resize/redraw never needs the network again.
+    cachedMonthlyChartInputs = { safeDist, safeDur, distanceGoal, durationGoal }
+
+    renderMonthlyChart()
+}
+
+// Pure rendering — no awaits, no fetches. Safe to call on every resize.
+function renderMonthlyChart() {
+    if (!cachedMonthlyChartInputs) return
+    const { safeDist, safeDur, distanceGoal, durationGoal } = cachedMonthlyChartInputs
+
+    const displayDist = safeDist * 6
+    const displayDur = safeDur
+
+    const canvas = document.getElementById("statsChart")
+    const container = document.getElementById("monthly-panel")
+    const ctx = canvas.getContext("2d")
+
+    if (monthlyChart) {
+        monthlyChart.destroy()
+        monthlyChart = null
     }
 
     const chartData = {
@@ -1003,19 +1043,16 @@ async function loadMonthlyStats() {
         }]
     }
 
-    const rect = canvas.getBoundingClientRect()
     const maxCanvasSize = 4096
     const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
-    const widthPx = rect.width || canvas.clientWidth || 400
-    const heightPx = rect.height || canvas.clientHeight || 156
+    const widthPx = getContentWidth(container) || canvas.clientWidth || 400
+    const heightPx = 156 // fixed layout height, intentionally not measured (avoids any height-based feedback)
 
     canvas.width = Math.min(Math.round(widthPx * dpr), maxCanvasSize)
     canvas.height = Math.min(Math.round(heightPx * dpr), maxCanvasSize)
-    canvas.style.width = '100%'
+    canvas.style.width = widthPx + 'px'
     canvas.style.height = heightPx + 'px'
 
-    // Fixed font sizes — intentionally NOT tied to canvas or window width,
-    // so text stays equally readable regardless of how narrow the chart gets.
     const valueFontPx = 13
     const goalFontPx = 12
     const tickFontPx = 13
@@ -1064,11 +1101,6 @@ async function loadMonthlyStats() {
             }
         },
         datasets: { bar: { categoryPercentage: 0.78, barPercentage: 0.9 } }
-    }
-
-    if (monthlyChart) {
-        monthlyChart.destroy()
-        monthlyChart = null
     }
 
     const GOAL_X_FRACTION = 0.72
@@ -1167,8 +1199,25 @@ async function loadMonthlyStats() {
 }
 
 async function loadYearlyStats() {
-    const canvas = document.getElementById("yearlyChart")
-    const ctx = canvas.getContext("2d")
+    let statsByYear = {}
+
+    if (isGuest) {
+        statsByYear = guestYearlyStats
+    } else {
+        for (let i = 0; i < selectedYears.length; i++) {
+            const year = selectedYears[i]
+            const res = await authFetch(`/api/stats/year?year=${year}`)
+            if (!res) return
+            statsByYear[year] = await res.json()
+        }
+    }
+
+    cachedYearlyStatsByYear = statsByYear
+    renderYearlyChart()
+}
+
+function renderYearlyChart() {
+    if (!cachedYearlyStatsByYear) return
 
     const toggle = document.getElementById("toggle-volume-type")
     const metric = toggle && toggle.checked ? "duration" : "distance"
@@ -1181,52 +1230,28 @@ async function loadYearlyStats() {
 
     const colors = ["#eb41ac","#a78bfa","#f59e0b","#60a5fa","#d6e723","#ef4444","#22c55e","#2f0a9d"]
 
+    const years = Object.keys(cachedYearlyStatsByYear).map(Number).sort((a, b) => a - b)
     let allData = []
 
-    if (isGuest) {
-        const guestYears = Object.keys(guestYearlyStats).map(Number).sort((a, b) => a - b)
-        guestYears.forEach((year, i) => {
-            const data = guestYearlyStats[year]
-            const hasData = data.some(m => (metric === "distance" ? m.distance_km : m.duration_min) > 0)
-            if (hasData) {
-                allData.push({ year, data, color: colors[i % colors.length] })
-            }
-        })
-    } else {
-        for (let i = 0; i < selectedYears.length; i++) {
-            const year = selectedYears[i]
-            const res = await authFetch(`/api/stats/year?year=${year}`)
-            if (!res) return
-            const data = await res.json()
-
-            let hasData = false
-            for (let m = 0; m < 12; m++) {
-                const val = metric === "distance"
-                    ? data[m].distance_km
-                    : data[m].duration_min
-
-                if (val > 0) hasData = true
-            }
-
-            if (hasData) {
-                allData.push({ year, data, color: colors[i % colors.length] })
-            }
+    years.forEach((year, i) => {
+        const data = cachedYearlyStatsByYear[year]
+        const hasData = data.some(m => (metric === "distance" ? m.distance_km : m.duration_min) > 0)
+        if (hasData) {
+            allData.push({ year, data, color: colors[i % colors.length] })
         }
-    }
+    })
 
-    // oldest years first so legend increments left-to-right
     allData.sort((a, b) => a.year - b.year)
 
     const visibleCount = Math.min(5, allData.length)
     const hideCount = allData.length - visibleCount
 
-    // Update yearly totals table
     const metricHeader = document.getElementById("yearly-metric-header")
     const tableBody = document.getElementById("yearly-totals-body")
 
     if (metricHeader) {
-        metricHeader.textContent = metric === "distance" 
-            ? "Total Distance (km)" 
+        metricHeader.textContent = metric === "distance"
+            ? "Total Distance (km)"
             : "Total Duration (min)"
     }
 
@@ -1234,13 +1259,9 @@ async function loadYearlyStats() {
     allData.forEach(item => {
         let total = 0
         item.data.forEach(monthData => {
-            if (metric === "distance") {
-                total += monthData.distance_km
-            } else {
-                total += monthData.duration_min
-            }
+            total += metric === "distance" ? monthData.distance_km : monthData.duration_min
         })
-        
+
         const row = document.createElement("tr")
         const unit = metric === "distance" ? "km" : "min"
         row.innerHTML = `
@@ -1279,14 +1300,24 @@ async function loadYearlyStats() {
 
     const chartData = { labels, datasets }
 
-    // Manually size yearly canvas and create chart with responsive disabled
-    const rectY = canvas.getBoundingClientRect()
+    const canvas = document.getElementById("yearlyChart")
+    const container = document.getElementById("yearly-panel")
+    const ctx = canvas.getContext("2d")
+
+    if (yearlyChart) {
+        yearlyChart.destroy()
+        yearlyChart = null
+    }
+
     const maxCanvasSize = 4096
     const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
-    canvas.width = Math.min(Math.round(rectY.width * dpr), maxCanvasSize)
-    canvas.height = Math.min(Math.round((rectY.height || 350) * dpr), maxCanvasSize)
-    canvas.style.width = rectY.width + 'px'
-    canvas.style.height = (rectY.height || 350) + 'px'
+    const widthPx = getContentWidth(container) || canvas.clientWidth || 400
+    const heightPx = 320 // fixed layout height
+
+    canvas.width = Math.min(Math.round(widthPx * dpr), maxCanvasSize)
+    canvas.height = Math.min(Math.round(heightPx * dpr), maxCanvasSize)
+    canvas.style.width = widthPx + 'px'
+    canvas.style.height = heightPx + 'px'
 
     const optionsY = {
         responsive: false,
@@ -1338,10 +1369,6 @@ async function loadYearlyStats() {
         }
     }
 
-    if (yearlyChart) {
-        yearlyChart.destroy()
-        yearlyChart = null
-    }
     yearlyChart = new Chart(ctx, { type: 'line', data: chartData, options: optionsY })
 }
 
