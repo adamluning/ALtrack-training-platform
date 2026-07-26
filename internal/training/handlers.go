@@ -205,6 +205,34 @@ func GetGoalsHandler(c *gin.Context) {
 	c.JSON(200, goals)
 }
 
+func UpdateGoalHandler(c *gin.Context) {
+	if c.GetBool("is_guest") {
+		c.JSON(403, gin.H{"error": "guest users cannot modify data"})
+		return
+	}
+
+	userID := c.GetInt("user_id")
+
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	var body struct {
+		Title   string `json:"title"`
+		Target  string `json:"target"`
+		EndDate string `json:"end_date"`
+	}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "invalid body"})
+		return
+	}
+
+	err := UpdateGoal(userID, id, body.Title, body.Target, body.EndDate)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "updated"})
+}
+
 func DeleteGoalHandler(c *gin.Context) {
 	if c.GetBool("is_guest") {
 		c.JSON(403, gin.H{"error": "guest users cannot modify data"})
@@ -329,6 +357,33 @@ func GetPBsHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(200, pbs)
+}
+
+func UpdatePBHandler(c *gin.Context) {
+	if c.GetBool("is_guest") {
+		c.JSON(403, gin.H{"error": "guest users cannot modify data"})
+		return
+	}
+
+	userID := c.GetInt("user_id")
+
+	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	var body struct {
+		Distance float64 `json:"distance"`
+		Time     string  `json:"time"`
+	}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "invalid body"})
+		return
+	}
+
+	err := UpdatePB(userID, id, body.Distance, body.Time)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "updated"})
 }
 
 func DeletePBHandler(c *gin.Context) {

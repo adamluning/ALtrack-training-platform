@@ -44,6 +44,7 @@ func New() *gin.Engine {
 
 	protected.POST("/goals", training.CreateGoalHandler)
 	protected.GET("/goals", training.GetGoalsHandler)
+	protected.PUT("/goals/:id", training.UpdateGoalHandler)
 	protected.DELETE("/goals/:id/delete", training.DeleteGoalHandler)
 
 	protected.GET("/stats/month", training.GetMonthlyStatsHandler)
@@ -52,6 +53,7 @@ func New() *gin.Engine {
 
 	protected.POST("/pbs", training.CreatePBHandler)
 	protected.GET("/pbs", training.GetPBsHandler)
+	protected.PUT("/pbs/:id", training.UpdatePBHandler)
 	protected.DELETE("/pbs/:id/delete", training.DeletePBHandler)
 
 	return r

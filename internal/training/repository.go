@@ -175,6 +175,16 @@ func GetGoalsByYear(userID, year int) ([]Goal, error) {
 	return goals, nil
 }
 
+func UpdateGoal(userID int, id int64, title, target, endDate string) error {
+	query := `UPDATE goals
+			  SET title=$1,
+				  target=$2,
+				  end_date=$3
+			  WHERE user_id=$4 AND id=$5`
+	_, err := db.DB.Exec(query, title, target, endDate, userID, id)
+	return err
+}
+
 func DeleteGoal(userID int, id int64) error {
 	query := `DELETE FROM goals WHERE user_id=$1 AND id=$2`
 	_, err := db.DB.Exec(query, userID, id)
@@ -279,6 +289,15 @@ func GetPBs(userID int) ([]PB, error) {
 		pbs = append(pbs, pb)
 	}
 	return pbs, nil
+}
+
+func UpdatePB(userID int, id int64, distance float64, time string) error {
+	query := `UPDATE pbs
+			  SET distance=$1,
+				  time=$2
+			  WHERE user_id=$3 AND id=$4`
+	_, err := db.DB.Exec(query, distance, time, userID, id)
+	return err
 }
 
 func DeletePB(userID int, id int64) error {

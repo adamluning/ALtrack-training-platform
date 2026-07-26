@@ -90,13 +90,17 @@
         <div class="panel" id="goal-panel">
             <h2>Goals</h2>
             <div id="goals-list"></div>
-            <div class="panel panel-nested" id="add-goal-panel">
+
+            <button class="btn-secondary" id="show-add-goal-button" onclick="showAddGoalForm()">+ Add goal</button>
+
+            <div class="panel panel-nested" id="add-goal-panel" style="display:none;">
                 <h3>Add goal</h3>
                 <form onsubmit="addGoal(); return false;" class="inline-form">
                     <input id="goal-title" placeholder="Title">
                     <input id="goal-target" placeholder="Target" style="width: 300px;">
                     <input id="goal-date" type="date">
                     <button type="submit" class="btn-primary">Add</button>
+                    <button type="button" class="btn-secondary" onclick="hideAddGoalForm()">Cancel</button>
                 </form>
             </div>
         </div>
@@ -136,14 +140,21 @@
                 <div class="panel" id="pb-panel">
                     <h2>Personal Bests</h2>
 
-                    <form id="pb-form" onsubmit="addPersonalBest(); return false;" class="inline-form">
-                        <input id="pb-distance" type="number" min="0" step="0.1" placeholder="Distance (km)">
-                        <input id="pb-time" type="text" placeholder="hh:mm:ss">
-                        <button type="submit" class="btn-primary">Add PB</button>
-                    </form>
-
                     <div id="pb-list"></div>
+
+                    <button class="btn-secondary" id="show-add-pb-button" onclick="showAddPBForm()">+ Add PB</button>
+
+                    <div class="panel panel-nested" id="add-pb-panel" style="display:none;">
+                        <h3>Add PB</h3>
+                        <form id="pb-form" onsubmit="addPersonalBest(); return false;" class="inline-form">
+                            <input id="pb-distance" type="number" min="0" step="0.1" placeholder="Distance (km)">
+                            <input id="pb-time" type="text" placeholder="hh:mm:ss">
+                            <button type="submit" class="btn-primary">Add PB</button>
+                            <button type="button" class="btn-secondary" onclick="hideAddPBForm()">Cancel</button>
+                        </form>
+                    </div>
                 </div>
+
             </div>
 
             <div class="panel" id="right-panel">

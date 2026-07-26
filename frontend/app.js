@@ -282,6 +282,54 @@ function togglePassword(show, inputId) {
     input.type = show ? "text" : "password"
 }
 
+let openRowMenuId = null
+
+function toggleRowMenu(event, menuId) {
+    event.stopPropagation()
+    const menu = document.getElementById(menuId)
+    if (!menu) return
+
+    const isOpen = menu.classList.contains('open')
+    closeAllRowMenus()
+
+    if (!isOpen) {
+        menu.classList.add('open')
+        openRowMenuId = menuId
+    }
+}
+
+function closeAllRowMenus() {
+    document.querySelectorAll('.row-menu-dropdown.open').forEach(el => el.classList.remove('open'))
+    openRowMenuId = null
+}
+
+document.addEventListener('click', () => closeAllRowMenus())
+
+function showAddGoalForm() {
+    document.getElementById("add-goal-panel").style.display = "block"
+    document.getElementById("show-add-goal-button").style.display = "none"
+}
+
+function hideAddGoalForm() {
+    document.getElementById("add-goal-panel").style.display = "none"
+    document.getElementById("show-add-goal-button").style.display = "inline-flex"
+    document.getElementById("goal-title").value = ""
+    document.getElementById("goal-target").value = ""
+    document.getElementById("goal-date").value = ""
+}
+
+function showAddPBForm() {
+    document.getElementById("add-pb-panel").style.display = "block"
+    document.getElementById("show-add-pb-button").style.display = "none"
+}
+
+function hideAddPBForm() {
+    document.getElementById("add-pb-panel").style.display = "none"
+    document.getElementById("show-add-pb-button").style.display = "inline-flex"
+    document.getElementById("pb-distance").value = ""
+    document.getElementById("pb-time").value = ""
+}
+
 // ===== Authentication =====
 async function login() {
     const email = document.getElementById("auth-email").value.trim()
@@ -846,7 +894,6 @@ async function loadGoals() {
 
     const container = document.getElementById("goals-list")
     container.innerHTML = ""
-    // Header row for Goals
     const header = document.createElement("div")
     header.className = "goal-list-header"
     header.innerHTML = `
@@ -860,16 +907,111 @@ async function loadGoals() {
     if (goals) {
         goals.forEach(g => {
             const div = document.createElement("div")
-            div.className = "goal-card"
-            div.innerHTML = `
-                <div class="goal-col goal-col-title"><b>${htmlEscape(g.title)}</b></div>
-                <div class="goal-col goal-col-target">${htmlEscape(g.target)}</div>
-                <div class="goal-col goal-col-end">${htmlEscape(g.end_date)}</div>
-                <div class="goal-col goal-col-actions"><button class="btn-danger" ${isGuest ? "disabled" : `onclick=\"deleteGoal(${g.id})\"`}>Delete</button></div>
-            `
+            div.id = `goal-row-${g.id}`
+            div.innerHTML = renderGoalCard(g)
             container.appendChild(div)
         });
     }
+}
+
+const kebabIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>`
+const editIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`
+const trashIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>`
+
+function renderGoalCard(g) {
+    const disabledAttr = isGuest ? "disabled" : ""
+    const menuId = `goal-menu-${g.id}`
+
+    return `
+    <div class="goal-card">
+        <div class="goal-col goal-col-title"><b>${htmlEscape(g.title)}</b></div>
+        <div class="goal-col goal-col-target">${htmlEscape(g.target)}</div>
+        <div class="goal-col goal-col-end">${htmlEscape(g.end_date)}</div>
+        <div class="goal-col goal-col-actions">
+            <div class="row-menu">
+                <button class="row-menu-trigger" onclick="toggleRowMenu(event, '${menuId}')" aria-label="Goal options">${kebabIcon}</button>
+                <div class="row-menu-dropdown" id="${menuId}">
+                    <button ${disabledAttr} onclick="editGoal(${g.id})">${editIcon} Edit</button>
+                    <button class="danger" ${disabledAttr} onclick="deleteGoal(${g.id})">${trashIcon} Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    `
+}
+
+function editGoal(id) {
+    closeAllRowMenus()
+    if (isGuest) {
+        setAppMessage("Guest mode is read-only.")
+        return
+    }
+
+    const row = document.getElementById(`goal-row-${id}`)
+    if (!row) return
+
+    const now = new Date()
+    const year = now.getFullYear()
+    const goals = isGuest ? guestGoals : window.__lastLoadedGoals
+    // We don't keep a separate goals cache. Simplest approach: refetch.
+    ;(async () => {
+        let goal
+        if (isGuest) {
+            goal = guestGoals.find(g => g.id === id)
+        } else {
+            const res = await authFetch(`/api/goals?year=${year}`)
+            if (!res) return
+            const list = await res.json()
+            goal = list.find(g => g.id === id)
+        }
+        if (!goal) return
+
+        row.innerHTML = `
+        <div class="goal-edit-row">
+            <div class="goal-edit-fields">
+                <div class="session-edit-field">
+                    <label>Title</label>
+                    <input id="edit-goal-title-${id}" value="${htmlEscape(goal.title)}">
+                </div>
+                <div class="session-edit-field">
+                    <label>Target</label>
+                    <input id="edit-goal-target-${id}" value="${htmlEscape(goal.target)}">
+                </div>
+                <div class="session-edit-field">
+                    <label>End date</label>
+                    <input id="edit-goal-date-${id}" type="date" value="${htmlEscape(goal.end_date)}">
+                </div>
+            </div>
+            <div class="goal-edit-actions">
+                <button class="btn-secondary" onclick="cancelEditGoal()">Cancel</button>
+                <button class="btn-primary" onclick="saveGoalEdit(${id})">Save</button>
+            </div>
+        </div>
+        `
+    })()
+}
+
+function cancelEditGoal() {
+    loadGoals()
+}
+
+async function saveGoalEdit(id) {
+    const title = document.getElementById(`edit-goal-title-${id}`)?.value || ''
+    const target = document.getElementById(`edit-goal-target-${id}`)?.value || ''
+    const end_date = document.getElementById(`edit-goal-date-${id}`)?.value || ''
+
+    if (!title || !target || !end_date) {
+        setAppMessage("Fill all goal fields.")
+        return
+    }
+
+    await authFetch(`/api/goals/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ title, target, end_date })
+    })
+
+    loadGoals()
 }
 
 async function addGoal() {
@@ -905,14 +1047,12 @@ async function addGoal() {
         })
     })
 
-    document.getElementById("goal-title").value = ""
-    document.getElementById("goal-target").value = ""
-    document.getElementById("goal-date").value = ""
-
+    hideAddGoalForm()
     loadGoals()
 }
 
 async function deleteGoal(id) {
+    closeAllRowMenus()
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
         return
@@ -1015,7 +1155,6 @@ async function loadMonthlyStats() {
     renderMonthlyChart()
 }
 
-// Pure rendering — no awaits, no fetches. Safe to call on every resize.
 function renderMonthlyChart() {
     if (!cachedMonthlyChartInputs) return
     const { safeDist, safeDur, distanceGoal, durationGoal } = cachedMonthlyChartInputs
@@ -1430,7 +1569,6 @@ async function loadPersonalBests() {
 
     const container = document.getElementById("pb-list")
     container.innerHTML = ""
-    // Header row for PBs
     const header = document.createElement("div")
     header.className = "pb-list-header"
     header.innerHTML = `
@@ -1444,15 +1582,101 @@ async function loadPersonalBests() {
         pbs.sort((a, b) => a.distance - b.distance)
         pbs.forEach(pb => {
             const div = document.createElement("div")
-            div.className = "pb-card"
-            div.innerHTML = `
-                <div class="pb-col pb-col-distance"><b>${pb.distance} km</b></div>
-                <div class="pb-col pb-col-time">${pb.time}</div>
-                <div class="pb-col pb-col-actions"><button class="btn-danger" ${isGuest ? "disabled" : `onclick=\"deletePersonalBest(${pb.id})\"`}>Delete</button></div>
-            `
+            div.id = `pb-row-${pb.id}`
+            div.innerHTML = renderPBCard(pb)
             container.appendChild(div)
         });
     }
+}
+
+function renderPBCard(pb) {
+    const disabledAttr = isGuest ? "disabled" : ""
+    const menuId = `pb-menu-${pb.id}`
+
+    return `
+    <div class="pb-card">
+        <div class="pb-col pb-col-distance"><b>${pb.distance} km</b></div>
+        <div class="pb-col pb-col-time">${pb.time}</div>
+        <div class="pb-col pb-col-actions">
+            <div class="row-menu">
+                <button class="row-menu-trigger" onclick="toggleRowMenu(event, '${menuId}')" aria-label="PB options">${kebabIcon}</button>
+                <div class="row-menu-dropdown" id="${menuId}">
+                    <button ${disabledAttr} onclick="editPersonalBest(${pb.id})">${editIcon} Edit</button>
+                    <button class="danger" ${disabledAttr} onclick="deletePersonalBest(${pb.id})">${trashIcon} Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    `
+}
+
+function editPersonalBest(id) {
+    closeAllRowMenus()
+    if (isGuest) {
+        setAppMessage("Guest mode is read-only.")
+        return
+    }
+
+    const row = document.getElementById(`pb-row-${id}`)
+    if (!row) return
+
+    ;(async () => {
+        let pb
+        if (isGuest) {
+            pb = guestPBs.find(p => p.id === id)
+        } else {
+            const res = await authFetch(`/api/pbs`)
+            if (!res) return
+            const list = await res.json()
+            pb = list.find(p => p.id === id)
+        }
+        if (!pb) return
+
+        row.innerHTML = `
+        <div class="pb-edit-row">
+            <div class="pb-edit-fields">
+                <div class="session-edit-field">
+                    <label>Distance (km)</label>
+                    <input id="edit-pb-distance-${id}" type="number" min="0" step="0.1" value="${pb.distance}">
+                </div>
+                <div class="session-edit-field">
+                    <label>Time (hh:mm:ss)</label>
+                    <input id="edit-pb-time-${id}" type="text" value="${htmlEscape(pb.time)}">
+                </div>
+            </div>
+            <div class="pb-edit-actions">
+                <button class="btn-secondary" onclick="cancelEditPersonalBest()">Cancel</button>
+                <button class="btn-primary" onclick="savePersonalBestEdit(${id})">Save</button>
+            </div>
+        </div>
+        `
+    })()
+}
+
+function cancelEditPersonalBest() {
+    loadPersonalBests()
+}
+
+async function savePersonalBestEdit(id) {
+    const distance = parseFloat(document.getElementById(`edit-pb-distance-${id}`)?.value)
+    const time = document.getElementById(`edit-pb-time-${id}`)?.value || ''
+
+    if (!distance || !time) {
+        setAppMessage("Fill both PB distance and time.")
+        return
+    }
+    if (!isValidTime(time)) {
+        setAppMessage("Time must be in hh:mm:ss format.")
+        return
+    }
+
+    await authFetch(`/api/pbs/${id}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ distance, time })
+    })
+
+    loadPersonalBests()
 }
 
 function isValidTime(t) {
@@ -1489,13 +1713,12 @@ async function addPersonalBest() {
         })
     })
 
-    document.getElementById("pb-distance").value = ""
-    document.getElementById("pb-time").value = ""
-
+    hideAddPBForm()
     loadPersonalBests()
 }
 
 async function deletePersonalBest(id) {
+    closeAllRowMenus()
     if (isGuest) {
         setAppMessage("Guest mode is read-only.")
         return
