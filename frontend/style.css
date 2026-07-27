@@ -1184,7 +1184,7 @@ input:checked + .slider:before {
     flex: 1 1 70px;
   }
   .goal-col-end{
-    flex: 0 1 70px;
+    flex: 0 1 74px;
   }
 
   .goal-col-end, .pb-col-time{
