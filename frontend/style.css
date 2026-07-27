@@ -815,7 +815,7 @@ button:disabled:hover{
   white-space: nowrap;
 }
 .goal-col-end{
-  flex: 0 1 110px;
+  flex: 0 1 90px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1173,12 +1173,18 @@ input:checked + .slider:before {
   .goal-list-header, .goal-card,
   .pb-list-header, .pb-card{
     flex-wrap: wrap;
-    gap: 6px 12px;
+    gap: 4px;
     padding: 8px;
   }
   .goal-col-title, .goal-col-target, .goal-col-end,
   .pb-col-distance, .pb-col-time{
     font-size: 12px;
+  }
+  .goal-col-title, .goal-col-target{
+    flex: 1 1 70px;
+  }
+  .goal-col-end{
+    flex: 0 1 70px;
   }
 
   .goal-col-end, .pb-col-time{
@@ -1191,11 +1197,6 @@ input:checked + .slider:before {
 
   .goal-list-header, .pb-list-header{
     font-size: 10px;
-  }
-
-  .goal-col-actions, .pb-col-actions{
-    width: 30px;
-    flex: 0 0 30px;
   }
 
   .row-menu-trigger{
