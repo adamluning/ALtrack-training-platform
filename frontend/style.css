@@ -280,6 +280,8 @@ h4{
   display: none;
   box-sizing: border-box;
   text-align: center;
+  color: var(--text);
+  background: rgba(248, 113, 113, 0.568);
 }
 
 input, button{
@@ -815,7 +817,7 @@ button:disabled:hover{
   white-space: nowrap;
 }
 .goal-col-end{
-  flex: 0 1 90px;
+  flex: 0 1 100px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -60,7 +60,11 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	token, _ := GenerateToken(id, req.Email)
+	token, err := GenerateToken(id, req.Email)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "token generation failed"})
+		return
+	}
 
 	c.JSON(200, gin.H{"token": token})
 }
@@ -90,11 +94,15 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	if !CheckPassword(req.Password, user.PasswordHash) {
-		c.JSON(401, gin.H{"error": "incorrect password"})
+		c.JSON(401, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	token, _ := GenerateToken(user.ID, req.Email)
+	token, err := GenerateToken(user.ID, req.Email)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "token generation failed"})
+		return
+	}
 
 	c.JSON(200, gin.H{"token": token})
 }

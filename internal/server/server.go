@@ -40,21 +40,21 @@ func New() *gin.Engine {
 	protected.PUT("/sessions/:id", training.UpdateSessionHandler)
 	protected.PUT("/sessions/:id/complete", training.CompleteSessionHandler)
 	protected.PUT("/sessions/:id/note", training.CreateSessionNoteHandler)
-	protected.DELETE("/sessions/:id/delete", training.DeleteSessionHandler)
+	protected.DELETE("/sessions/:id", training.DeleteSessionHandler)
 
 	protected.POST("/goals", training.CreateGoalHandler)
 	protected.GET("/goals", training.GetGoalsHandler)
 	protected.PUT("/goals/:id", training.UpdateGoalHandler)
-	protected.DELETE("/goals/:id/delete", training.DeleteGoalHandler)
+	protected.DELETE("/goals/:id", training.DeleteGoalHandler)
 
 	protected.GET("/stats/month", training.GetMonthlyStatsHandler)
 	protected.GET("/stats/year", training.GetYearlyStatsHandler)
-	protected.POST("stats/manual", training.AddOldStatsHandler)
+	protected.POST("/stats/manual", training.AddOldStatsHandler)
 
 	protected.POST("/pbs", training.CreatePBHandler)
 	protected.GET("/pbs", training.GetPBsHandler)
 	protected.PUT("/pbs/:id", training.UpdatePBHandler)
-	protected.DELETE("/pbs/:id/delete", training.DeletePBHandler)
+	protected.DELETE("/pbs/:id", training.DeletePBHandler)
 
 	return r
 }

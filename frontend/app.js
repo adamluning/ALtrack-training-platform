@@ -495,7 +495,6 @@ async function loadCalendar() {
     }
 
     renderCalendar(currentYear, currentMonth)
-    loadStats()
 
     if (selectedDate && calendarData[selectedDate]) {
         selectDay(selectedDate)
@@ -728,6 +727,7 @@ async function submitVolume(id) {
     })
 
     await loadCalendar()
+    loadStats()
     if (selectedDate) selectDay(selectedDate)
 }
 
@@ -851,6 +851,7 @@ async function saveSessionEdit(id) {
     })
 
     await loadCalendar()
+    loadStats()
     if (selectedDate) selectDay(selectedDate)
 }
 
@@ -869,11 +870,12 @@ async function deleteSession(id) {
         return
     }
 
-    await authFetch(`/api/sessions/${id}/delete`, {
+    await authFetch(`/api/sessions/${id}`, {
         method: "DELETE"
     })
 
     await loadCalendar()
+    loadStats()
     if (selectedDate) selectDay(selectedDate)
 }
 
@@ -1058,7 +1060,7 @@ async function deleteGoal(id) {
         return
     }
 
-    await authFetch(`/api/goals/${id}/delete`, {
+    await authFetch(`/api/goals/${id}`, {
         method: "DELETE"
     })
     loadGoals()
@@ -1724,7 +1726,7 @@ async function deletePersonalBest(id) {
         return
     }
 
-    await authFetch(`/api/pbs/${id}/delete`, {
+    await authFetch(`/api/pbs/${id}`, {
         method: "DELETE"
     })
     loadPersonalBests()
