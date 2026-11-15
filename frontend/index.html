@@ -86,24 +86,40 @@
     <div id="app-message" class="auth-error" style="display:none;"></div>
 
     <div id="app-content">
-
-        <div class="panel" id="goal-panel">
-            <h2>Goals</h2>
-            <div id="goals-list"></div>
-
-            <button class="btn-secondary" id="show-add-goal-button" onclick="showAddGoalForm()">+ Add goal</button>
-
-            <div class="panel panel-nested" id="add-goal-panel" style="display:none;">
-                <h3>Add goal</h3>
-                <form onsubmit="addGoal(); return false;" class="inline-form">
-                    <input id="goal-title" placeholder="Title">
-                    <input id="goal-target" placeholder="Target" style="width: 300px;">
-                    <input id="goal-date" type="date">
-                    <button type="submit" class="btn-primary">Add</button>
-                    <button type="button" class="btn-secondary" onclick="hideAddGoalForm()">Cancel</button>
-                </form>
+        <header class="dashboard-heading">
+            <div>
+                <p class="dashboard-eyebrow">YOUR TRAINING</p>
+                <h1>Training dashboard</h1>
+                <p>Plan your sessions and keep an eye on your progress.</p>
             </div>
-        </div>
+            <button class="btn-primary btn-add-session" onclick="showAddSessionForm()">+ Add session</button>
+        </header>
+
+        <section class="panel monthly-overview" aria-labelledby="overview-title">
+            <div class="overview-heading">
+                <div>
+                    <p class="dashboard-eyebrow">MONTHLY OVERVIEW</p>
+                    <h2 id="overview-title"><span id="overview-month">This month</span> at a glance</h2>
+                </div>
+            </div>
+            <div class="overview-metrics">
+                <article class="overview-metric">
+                    <span class="overview-metric-label">Distance</span>
+                    <strong id="overview-distance">0.0 km</strong>
+                    <span class="overview-metric-note">completed</span>
+                </article>
+                <article class="overview-metric">
+                    <span class="overview-metric-label">Time</span>
+                    <strong id="overview-duration">0 min</strong>
+                    <span class="overview-metric-note">completed sessions</span>
+                </article>
+                <article class="overview-metric">
+                    <span class="overview-metric-label">Sessions</span>
+                    <strong id="overview-sessions">0</strong>
+                    <span class="overview-metric-note">completed this month</span>
+                </article>
+            </div>
+        </section>
 
         <div id="app-grid">
             <div id="app-grid-main">
@@ -119,57 +135,43 @@
                         </button>
                     </div>
                     <div id="calendar-grid"></div>
-
-
-                    <div id="day-panel">
-                        <h3 id="selected-day"></h3>
-                        <div id="day-sessions"></div>
-                    </div>
-
-                    <div class="panel panel-nested" id="add-session-panel">
-                        <h3>Add session</h3>
-                        <form onsubmit="addSession(); return false;" class="inline-form">
-                            <input id="session-title" placeholder="Title">
-                            <input id="session-desc" placeholder="Description" style="width: 400px;">
-                            <input id="session-date" type="date">
-                            <button type="submit" class="btn-primary">Add</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="panel" id="pb-panel">
-                    <h2>Personal Bests</h2>
-
-                    <div id="pb-list"></div>
-
-                    <button class="btn-secondary" id="show-add-pb-button" onclick="showAddPBForm()">+ Add PB</button>
-
-                    <div class="panel panel-nested" id="add-pb-panel" style="display:none;">
-                        <h3>Add PB</h3>
-                        <form id="pb-form" onsubmit="addPersonalBest(); return false;" class="inline-form">
-                            <input id="pb-distance" type="number" min="0" step="0.1" placeholder="Distance (km)">
-                            <input id="pb-time" type="text" placeholder="hh:mm:ss">
-                            <button type="submit" class="btn-primary">Add PB</button>
-                            <button type="button" class="btn-secondary" onclick="hideAddPBForm()">Cancel</button>
-                        </form>
-                    </div>
                 </div>
 
             </div>
 
-            <div class="panel" id="right-panel">
-
-                <div id="stats">
-                    <h2>Stats</h2>
-                </div>
-
-                <div class="panel panel-nested" id="monthly-panel">
-                    <h3>Volume this month</h3>
+            <aside id="right-panel" aria-label="Monthly progress">
+                <div class="panel" id="monthly-panel">
+                    <h3>Monthly progress</h3>
                     <canvas id="statsChart"></canvas>
                 </div>
+                <section class="panel" id="day-panel" aria-labelledby="selected-day">
+                    <div class="day-panel-heading">
+                        <h2>Selected day</h2>
+                        <button type="button" class="btn-primary day-add-session" onclick="showAddSessionForm()">+ Add session</button>
+                    </div>
+                    <h3 id="selected-day"></h3>
+                    <div id="day-sessions"></div>
+                </section>
+                <section class="panel" id="add-session-panel" style="display:none;" aria-labelledby="add-session-title">
+                    <h2 id="add-session-title">Add session</h2>
+                    <form onsubmit="addSession(); return false;" class="session-create-form">
+                        <label for="session-title">Session title</label>
+                        <input id="session-title" placeholder="e.g. Easy run">
+                        <label for="session-desc">Description</label>
+                        <input id="session-desc" placeholder="Distance, pace or workout details">
+                        <label for="session-date">Date</label>
+                        <input id="session-date" type="date">
+                        <div class="session-create-actions">
+                            <button type="submit" class="btn-primary">Save session</button>
+                            <button type="button" class="btn-secondary" onclick="hideAddSessionForm()">Cancel</button>
+                        </div>
+                    </form>
+                </section>
+            </aside>
+        </div>
 
-                <div class="panel panel-nested" id="yearly-panel">
-                    <h3>Yearly Volume</h3>
+        <section class="panel" id="yearly-panel" aria-labelledby="yearly-title">
+                    <h2 id="yearly-title">Yearly volume</h2>
                     <div id="yearly-toggle">
                         <label class="switch">
                             <input type="checkbox" id="toggle-volume-type">
@@ -205,8 +207,39 @@
                             <button type="submit" class="btn-primary">Add</button>
                         </form>
                     </div>
+        </section>
+
+        <div class="secondary-panels">
+            <section class="panel" id="goal-panel" aria-labelledby="goals-title">
+                <h2 id="goals-title">Goals</h2>
+                <div id="goals-list"></div>
+                <button class="btn-secondary" id="show-add-goal-button" onclick="showAddGoalForm()">+ Add goal</button>
+                <div class="panel panel-nested" id="add-goal-panel" style="display:none;">
+                    <h3>Add goal</h3>
+                    <form onsubmit="addGoal(); return false;" class="inline-form">
+                        <input id="goal-title" placeholder="Title">
+                        <input id="goal-target" placeholder="Target" style="width: 300px;">
+                        <input id="goal-date" type="date">
+                        <button type="submit" class="btn-primary">Add</button>
+                        <button type="button" class="btn-secondary" onclick="hideAddGoalForm()">Cancel</button>
+                    </form>
                 </div>
-            </div>
+            </section>
+
+            <section class="panel" id="pb-panel" aria-labelledby="pbs-title">
+                <h2 id="pbs-title">Personal bests</h2>
+                <div id="pb-list"></div>
+                <button class="btn-secondary" id="show-add-pb-button" onclick="showAddPBForm()">+ Add PB</button>
+                <div class="panel panel-nested" id="add-pb-panel" style="display:none;">
+                    <h3>Add PB</h3>
+                    <form id="pb-form" onsubmit="addPersonalBest(); return false;" class="inline-form">
+                        <input id="pb-distance" type="number" min="0" step="0.1" placeholder="Distance (km)">
+                        <input id="pb-time" type="text" placeholder="hh:mm:ss">
+                        <button type="submit" class="btn-primary">Add PB</button>
+                        <button type="button" class="btn-secondary" onclick="hideAddPBForm()">Cancel</button>
+                    </form>
+                </div>
+            </section>
         </div>
 
     </div>

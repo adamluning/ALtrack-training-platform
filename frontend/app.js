@@ -12,7 +12,7 @@ let selectedDate = null
 let appMessageTimer = null
 
 const MONTH_NAMES = [
-  "January","February","Mars","April","May","June",
+  "January","February","March","April","May","June",
   "July","August","September","October","November","December"
 ]
 
@@ -45,6 +45,17 @@ function getDateString(date) {
     return date.toISOString().split("T")[0]
 }
 
+function getLocalDateString(date = new Date()) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+}
+
+function isFutureSession(session) {
+    return Boolean(session?.date && session.date > getLocalDateString())
+}
+
 function prevMonth() {
     currentMonth--
     if (currentMonth === 0) {
@@ -52,6 +63,7 @@ function prevMonth() {
         currentYear--
     }
     loadCalendar()
+    loadMonthlyStats()
 }
 
 function nextMonth() {
@@ -61,6 +73,7 @@ function nextMonth() {
         currentYear++
     }
     loadCalendar()
+    loadMonthlyStats()
 }
 
 // ===== Guest sample data =====
@@ -156,6 +169,8 @@ function bootApp(){
 
     document.getElementById("session-date").value = ""
     setAppMessage("")
+    document.getElementById("overview-month").innerText =
+        `${MONTH_NAMES[currentMonth - 1]} ${currentYear}`
 
     if (isGuest) {
         prepareGuestSampleData()
@@ -165,6 +180,7 @@ function bootApp(){
     loadCalendar()
     loadGoals()
     loadStats()
+    loadOverviewStats()
     setupChartResizeObservers()
     const toggle = document.getElementById("toggle-volume-type")
     if (toggle) toggle.onchange = () => renderYearlyChart()
@@ -330,6 +346,20 @@ function hideAddPBForm() {
     document.getElementById("pb-time").value = ""
 }
 
+function showAddSessionForm() {
+    const panel = document.getElementById("add-session-panel")
+    panel.style.display = "block"
+    document.getElementById("session-date").value = selectedDate || getDateString(new Date())
+    panel.scrollIntoView({ behavior: "smooth", block: "center" })
+    document.getElementById("session-title").focus({ preventScroll: true })
+}
+
+function hideAddSessionForm() {
+    document.getElementById("add-session-panel").style.display = "none"
+    document.getElementById("session-title").value = ""
+    document.getElementById("session-desc").value = ""
+}
+
 // ===== Authentication =====
 async function login() {
     const email = document.getElementById("auth-email").value.trim()
@@ -487,19 +517,42 @@ async function loadCalendar() {
     document.getElementById("month-label").innerText =
         `${MONTH_NAMES[currentMonth-1]} ${currentYear}`
 
-    if (!selectedDate && isGuest) {
-        const today = getDateString(new Date())
-        if (calendarData[today]) {
-            selectedDate = today
-        }
+    const visibleMonth = `${currentYear}-${String(currentMonth).padStart(2, "0")}`
+    if (!selectedDate || !selectedDate.startsWith(`${visibleMonth}-`)) {
+        const now = new Date()
+        const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth() + 1
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+        selectedDate = isCurrentMonth ? today : `${visibleMonth}-01`
+    }
+
+    if (currentYear === new Date().getFullYear() && currentMonth === new Date().getMonth() + 1) {
+        updateCompletedSessionCount()
     }
 
     renderCalendar(currentYear, currentMonth)
 
-    if (selectedDate && calendarData[selectedDate]) {
+    if (selectedDate) {
         selectDay(selectedDate)
     }
     if (isGuest) applyGuestReadOnlyUI()
+}
+
+function updateCompletedSessionCount() {
+    const countEl = document.getElementById("overview-sessions")
+    if (!countEl) return
+    const completedCount = Object.values(calendarData)
+        .flat()
+        .filter(session => session.completed).length
+    countEl.textContent = String(completedCount)
+}
+
+function formatDuration(totalMinutes) {
+    const minutes = Math.round(Number(totalMinutes) || 0)
+    const hours = Math.floor(minutes / 60)
+    const remainder = minutes % 60
+    if (hours === 0) return `${remainder} min`
+    if (remainder === 0) return `${hours} h`
+    return `${hours} h ${remainder} min`
 }
 
 async function renderCalendar(year, month) {
@@ -596,7 +649,11 @@ function renderSessionCard(s){
     const disabledAttr = isGuest ? "disabled" : ""
 
     if (!s.completed) {
-        leftActions.push(`<button class="btn-primary" ${disabledAttr} ${canEditSession ? `onclick="completeSession(${s.id})"` : ""}>Complete</button>`)
+        if (isFutureSession(s)) {
+            leftActions.push(`<button class="btn-primary" disabled title="This session can be completed on its scheduled date">Available ${htmlEscape(s.date)}</button>`)
+        } else {
+            leftActions.push(`<button class="btn-primary" ${disabledAttr} ${canEditSession ? `onclick="completeSession(${s.id})"` : ""}>Complete</button>`)
+        }
     }
     if (!s.notes) {
         leftActions.push(`<input id="note-${s.id}" placeholder="Add note"><button class="btn-secondary" ${disabledAttr} ${canEditSession ? `onclick="addNote(${s.id})"` : ""}>Save note</button>`)
@@ -618,9 +675,8 @@ function renderSessionCard(s){
         : `<span class="status-badge pending">${clockIcon} Pending</span>`
 
     return `
-    <div class="session-card">
         <div class="session-header">
-        <div class="session-title">${htmlEscape(s.title)}</div>
+            <div class="session-title">${htmlEscape(s.title)}</div>
             <div style="display:flex; align-items:center;">
                 ${statusMarkup}
             </div>
@@ -634,7 +690,6 @@ function renderSessionCard(s){
             ${leftActions.length ? `<div class="session-left-actions">${leftActions.join('')}</div>` : ""}
             <div class="session-right-actions">${rightActions.join('')}</div>
         </div>
-    </div>
     `
 }
 
@@ -680,9 +735,13 @@ async function addSession() {
 
     document.getElementById("session-title").value = ""
     document.getElementById("session-desc").value = ""
-    document.getElementById("session-date").value = selectedDate || ""  
-
+    const [createdYear, createdMonth] = date.split("-").map(Number)
+    currentYear = createdYear
+    currentMonth = createdMonth
+    selectedDate = date
+    hideAddSessionForm()
     loadCalendar()
+    loadMonthlyStats()
 }
 
 async function completeSession(id) {
@@ -694,6 +753,11 @@ async function completeSession(id) {
     const card = document.getElementById(`session-${id}`)
     if(!card) return
     if(card.querySelector(".volume-box")) return
+    const session = (calendarData[selectedDate] || []).find(item => Number(item.id) === Number(id))
+    if (isFutureSession(session)) {
+        setAppMessage("You can complete this session on its scheduled date.")
+        return
+    }
 
     const vol = document.createElement("div")
     vol.className = "volume-box"
@@ -713,6 +777,12 @@ async function submitVolume(id) {
         return
     }
 
+    const session = (calendarData[selectedDate] || []).find(item => Number(item.id) === Number(id))
+    if (isFutureSession(session)) {
+        setAppMessage("You can complete this session on its scheduled date.")
+        return
+    }
+
     const distance = parseFloat(document.getElementById(`dist-${id}`).value || 0)
     const duration = parseInt(document.getElementById(`dur-${id}`).value || 0)
 
@@ -728,6 +798,7 @@ async function submitVolume(id) {
 
     await loadCalendar()
     loadStats()
+    await loadOverviewStats()
     if (selectedDate) selectDay(selectedDate)
 }
 
@@ -852,6 +923,7 @@ async function saveSessionEdit(id) {
 
     await loadCalendar()
     loadStats()
+    await loadOverviewStats()
     if (selectedDate) selectDay(selectedDate)
 }
 
@@ -876,6 +948,7 @@ async function deleteSession(id) {
 
     await loadCalendar()
     loadStats()
+    await loadOverviewStats()
     if (selectedDate) selectDay(selectedDate)
 }
 
@@ -1107,6 +1180,16 @@ async function getPreviousMonthsAverage(monthsBack = 3) {
             month = 12
             year -= 1
         }
+
+        if (isGuest) {
+            const monthData = guestYearlyStats[year]?.[month - 1]
+            const d = Number(monthData?.distance_km) || 0
+            const t = Number(monthData?.duration_min) || 0
+            if (d > 0) distances.push(d)
+            if (t > 0) durations.push(t)
+            continue
+        }
+
         const res = await authFetch(`/api/stats/month?year=${year}&month=${month}`)
         if (!res) continue
         const monthData = await res.json()
@@ -1132,7 +1215,11 @@ function getContentWidth(el) {
 async function loadMonthlyStats() {
     let data = { monthly_distance_km: 0, monthly_duration_min: 0 }
     if (isGuest) {
-        data = guestMonthlyStats
+        const monthData = guestYearlyStats[currentYear]?.[currentMonth - 1]
+        data = {
+            monthly_distance_km: Number(monthData?.distance_km) || 0,
+            monthly_duration_min: Number(monthData?.duration_min) || 0
+        }
     } else {
         const res = await authFetch(`/api/stats/month?year=${currentYear}&month=${currentMonth}`)
         if (!res) return
@@ -1157,12 +1244,28 @@ async function loadMonthlyStats() {
     renderMonthlyChart()
 }
 
+async function loadOverviewStats() {
+    let data = { monthly_distance_km: 0, monthly_duration_min: 0 }
+    if (isGuest) {
+        data = guestMonthlyStats
+    } else {
+        const today = new Date()
+        const year = today.getFullYear()
+        const month = today.getMonth() + 1
+        const res = await authFetch(`/api/stats/month?year=${year}&month=${month}`)
+        if (!res) return
+        data = await res.json()
+    }
+
+    const distance = Number(data.monthly_distance_km) || 0
+    const duration = Number(data.monthly_duration_min) || 0
+    document.getElementById("overview-distance").textContent = `${distance.toFixed(1)} km`
+    document.getElementById("overview-duration").textContent = formatDuration(duration)
+}
+
 function renderMonthlyChart() {
     if (!cachedMonthlyChartInputs) return
     const { safeDist, safeDur, distanceGoal, durationGoal } = cachedMonthlyChartInputs
-
-    const displayDist = safeDist * 6
-    const displayDur = safeDur
 
     const canvas = document.getElementById("statsChart")
     const container = document.getElementById("monthly-panel")
@@ -1174,37 +1277,29 @@ function renderMonthlyChart() {
     }
 
     const chartData = {
-        labels: ["Distance (km)", "Time (min)"],
+        labels: ["Distance", "Time"],
         datasets: [{
-            label: 'Volume',
+            label: "Monthly progress",
             data: [0, 0],
-            backgroundColor: 'transparent',
-            borderRadius: 6,
-            barThickness: 30
+            backgroundColor: "transparent",
+            barThickness: 76
         }]
     }
 
     const maxCanvasSize = 4096
     const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
     const widthPx = getContentWidth(container) || canvas.clientWidth || 400
-    const heightPx = 156 // fixed layout height, intentionally not measured (avoids any height-based feedback)
+    const heightPx = 292
 
     canvas.width = Math.min(Math.round(widthPx * dpr), maxCanvasSize)
     canvas.height = Math.min(Math.round(heightPx * dpr), maxCanvasSize)
     canvas.style.width = widthPx + 'px'
     canvas.style.height = heightPx + 'px'
 
-    const valueFontPx = 13
-    const goalFontPx = 12
-    const tickFontPx = 13
-
     const options = {
-        indexAxis: 'y',
         responsive: false,
         maintainAspectRatio: false,
-        layout: {
-            padding: { top: 16, bottom: 16, left: 8, right: 24 }
-        },
+        layout: { padding: { top: 42, bottom: 40, left: 8, right: 8 } },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -1216,35 +1311,17 @@ function renderMonthlyChart() {
                 cornerRadius: 10,
                 callbacks: {
                     label: (context) => {
-                        return context.dataIndex === 0
-                            ? `${safeDist.toFixed(1)} km`
-                            : `${safeDur.toFixed(0)} min`
+                        return context.dataIndex === 0 ? `${safeDist.toFixed(1)} km` : `${safeDur.toFixed(0)} min`
                     }
                 }
             }
         },
         scales: {
-            x: {
-                display: false,
-                min: 0,
-                max: Math.max(1400, Math.max(displayDist, displayDur, distanceGoal * 6, durationGoal) + 220),
-                ticks: { display: false },
-                grid: { display: false, drawBorder: false }
-            },
-            y: {
-                ticks: {
-                    display: true,
-                    color: '#cbd5e1',
-                    font: { size: tickFontPx, family: 'Inter', weight: '600' }
-                },
-                grid: { display: false, drawBorder: false },
-                border: { display: false }
-            }
+            x: { display: false, grid: { display: false }, border: { display: false } },
+            y: { display: false, min: 0, max: 1, grid: { display: false }, border: { display: false } }
         },
-        datasets: { bar: { categoryPercentage: 0.78, barPercentage: 0.9 } }
+        datasets: { bar: { categoryPercentage: 0.7, barPercentage: 1 } }
     }
-
-    const GOAL_X_FRACTION = 0.72
 
     const customBarsPlugin = {
         id: 'customBarsPlugin',
@@ -1256,82 +1333,67 @@ function renderMonthlyChart() {
             const durationBar = meta.data[1]
             if (!distanceBar || !durationBar) return
 
-            const barHalfThickness = 30 / 2
-            const plotWidth = chartArea.right - chartArea.left
-            const goalPixelX = chartArea.left + plotWidth * GOAL_X_FRACTION
-
-            const drawRow = (bar, value, goal, gradientColors, accentColor) => {
-                const rowTop = bar.y - barHalfThickness
-                const rowBottom = bar.y + barHalfThickness
-
-                const ratio = goal > 0 ? value / goal : 0
-                const rawBarWidth = ratio * plotWidth * GOAL_X_FRACTION
-                const barWidth = Math.max(0, Math.min(rawBarWidth, plotWidth))
-
-                const gradient = ctx.createLinearGradient(chartArea.left, rowTop, chartArea.left + Math.max(barWidth, 80), rowBottom)
-                gradient.addColorStop(0, gradientColors[0])
-                gradient.addColorStop(1, gradientColors[1])
-
-                ctx.save()
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.55)'
-                ctx.beginPath()
-                ctx.roundRect(chartArea.left, rowTop - 4, plotWidth * GOAL_X_FRACTION + 8, rowBottom - rowTop + 8, 8)
-                ctx.fill()
-
-                ctx.shadowColor = 'rgba(15, 23, 42, 0.28)'
-                ctx.shadowBlur = 10
-                ctx.shadowOffsetY = 4
-                ctx.fillStyle = gradient
-                ctx.beginPath()
-                ctx.roundRect(chartArea.left, rowTop, barWidth, rowBottom - rowTop, 6)
-                ctx.fill()
-
-                ctx.shadowBlur = 0
-                ctx.shadowOffsetY = 0
-                ctx.strokeStyle = accentColor
-                ctx.lineWidth = 1
-                ctx.stroke()
-                ctx.restore()
-
-                return { rowTop, rowBottom, barRight: chartArea.left + barWidth }
-            }
-
-            const distRow = drawRow(distanceBar, safeDist, distanceGoal, ['#4ade80', '#16a34a'], '#4ade80')
-            const durRow = drawRow(durationBar, safeDur, durationGoal, ['#60a5fa', '#2563eb'], '#60a5fa')
+            const plotHeight = chartArea.bottom - chartArea.top
+            const targetHeight = plotHeight * 0.72
+            const goalY = chartArea.bottom - targetHeight
 
             ctx.save()
             ctx.strokeStyle = 'rgba(184, 201, 226, 0.7)'
             ctx.lineWidth = 1.25
             ctx.setLineDash([5, 4])
             ctx.beginPath()
-            ctx.moveTo(goalPixelX, distRow.rowTop - 10)
-            ctx.lineTo(goalPixelX, distRow.rowBottom + 10)
-            ctx.stroke()
-            ctx.beginPath()
-            ctx.moveTo(goalPixelX, durRow.rowTop - 10)
-            ctx.lineTo(goalPixelX, durRow.rowBottom + 10)
+            ctx.moveTo(chartArea.left, goalY)
+            ctx.lineTo(chartArea.right, goalY)
             ctx.stroke()
             ctx.setLineDash([])
-            ctx.restore()
 
-            ctx.save()
-            ctx.font = `600 ${valueFontPx}px Inter`
-            ctx.textAlign = 'left'
-            ctx.fillStyle = '#f8fafc'
-            const distValueText = `${safeDist.toFixed(1)} km`
-            const durValueText = `${safeDur.toFixed(0)} min`
-            const distLabelX = Math.min(distRow.barRight + 8, chartArea.right - ctx.measureText(distValueText).width - 12)
-            const durLabelX = Math.min(durRow.barRight + 8, chartArea.right - ctx.measureText(durValueText).width - 12)
-            ctx.fillText(distValueText, distLabelX, distanceBar.y + 4)
-            ctx.fillText(durValueText, durLabelX, durationBar.y + 4)
+            const drawColumn = (bar, value, goal, title, valueText, goalText, colors) => {
+                const width = 76
+                const left = bar.x - width / 2
+                const ratio = goal > 0 ? Math.max(0, value / goal) : 0
+                const height = Math.min(plotHeight * 0.96, targetHeight * ratio)
+                const top = chartArea.bottom - height
 
-            ctx.font = `${goalFontPx}px Inter`
-            ctx.fillStyle = '#94a3b8'
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'bottom'
-            ctx.fillText(`${distanceGoal.toFixed(1)} km goal`, goalPixelX, distRow.rowTop - 12)
-            ctx.textBaseline = 'top'
-            ctx.fillText(`${durationGoal.toFixed(0)} min goal`, goalPixelX, durRow.rowBottom + 12)
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.68)'
+                ctx.beginPath()
+                ctx.roundRect(left, chartArea.top, width, plotHeight, 10)
+                ctx.fill()
+
+                if (height > 0) {
+                    const gradient = ctx.createLinearGradient(left, chartArea.bottom, left + width, top)
+                    gradient.addColorStop(0, colors[0])
+                    gradient.addColorStop(1, colors[1])
+                    ctx.fillStyle = gradient
+                    ctx.shadowColor = 'rgba(15, 23, 42, 0.32)'
+                    ctx.shadowBlur = 12
+                    ctx.shadowOffsetY = 4
+                    ctx.beginPath()
+                    ctx.roundRect(left, top, width, height, 10)
+                    ctx.fill()
+                    ctx.shadowColor = 'transparent'
+                    ctx.shadowBlur = 0
+                    ctx.shadowOffsetY = 0
+                }
+
+                ctx.fillStyle = '#e2e8f0'
+                ctx.font = '600 12px Inter'
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'bottom'
+                ctx.fillText(title, bar.x, chartArea.top - 14)
+
+                ctx.font = '700 12px Inter'
+                ctx.textBaseline = height > 34 ? 'top' : 'bottom'
+                ctx.fillStyle = height > 34 ? '#ffffff' : '#f8fafc'
+                ctx.fillText(valueText, bar.x, height > 34 ? top + 10 : Math.max(chartArea.top + 18, top - 8))
+
+                ctx.fillStyle = '#94a3b8'
+                ctx.font = '11px Inter'
+                ctx.textBaseline = 'top'
+                ctx.fillText(goalText, bar.x, chartArea.bottom + 14)
+            }
+
+            drawColumn(distanceBar, safeDist, distanceGoal, 'Distance (km)', `${safeDist.toFixed(1)} km`, `${distanceGoal.toFixed(1)} km goal`, ['#16a34a', '#4ade80'])
+            drawColumn(durationBar, safeDur, durationGoal, 'Time (min)', `${safeDur.toFixed(0)} min`, `${durationGoal.toFixed(0)} min goal`, ['#2563eb', '#60a5fa'])
             ctx.restore()
         }
     }
