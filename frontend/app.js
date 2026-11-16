@@ -36,8 +36,8 @@ let monthlyChart = null
 let yearlyChart = null
 let cachedMonthlyChartInputs = null // { safeDist, safeDur, distanceGoal, durationGoal }
 let cachedYearlyStatsByYear = null // { year: [ {distance_km, duration_min} x12 ], ... }
+let yearlyStatsRequestId = 0
 let monthlyChartResizeObserver = null
-let yearlyChartResizeObserver = null
 let yearlyHiddenYears = new Set()
 
 // ===== Utilities =====
@@ -161,6 +161,53 @@ function prepareGuestSampleData() {
     }
 }
 
+function getIsoWeekNumber(year, monthIndex, day) {
+    const date = new Date(Date.UTC(year, monthIndex, day))
+    const weekday = (date.getUTCDay() + 6) % 7
+    date.setUTCDate(date.getUTCDate() - weekday + 3)
+
+    const isoYear = date.getUTCFullYear()
+    const firstThursday = new Date(Date.UTC(isoYear, 0, 4))
+    const firstWeekday = (firstThursday.getUTCDay() + 6) % 7
+    firstThursday.setUTCDate(firstThursday.getUTCDate() - firstWeekday + 3)
+
+    return 1 + Math.round((date - firstThursday) / 604800000)
+}
+
+function buildGuestWeeklyStats(year) {
+    const months = guestYearlyStats[year] || []
+    const weeks = Array.from({ length: 53 }, (_, index) => ({
+        year,
+        week: index + 1,
+        distance_km: 0,
+        duration_min: 0
+    }))
+
+    months.forEach((monthData, monthIndex) => {
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+        const daysByWeek = new Map()
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const week = getIsoWeekNumber(year, monthIndex, day)
+            if (week >= 1 && week <= weeks.length) {
+                daysByWeek.set(week, (daysByWeek.get(week) || 0) + 1)
+            }
+        }
+
+        daysByWeek.forEach((dayCount, week) => {
+            const weekData = weeks[week - 1]
+            weekData.distance_km += (Number(monthData.distance_km) || 0) * dayCount / daysInMonth
+            weekData.duration_min += (Number(monthData.duration_min) || 0) * dayCount / daysInMonth
+        })
+    })
+
+    weeks.forEach(week => {
+        week.distance_km = Number(week.distance_km.toFixed(1))
+        week.duration_min = Math.round(week.duration_min)
+    })
+    return weeks
+}
+
 // ===== App lifecycle =====
 function bootApp(){
     document.getElementById("auth-panel").style.display = "none"
@@ -182,9 +229,23 @@ function bootApp(){
     loadStats()
     loadOverviewStats()
     setupChartResizeObservers()
-    const toggle = document.getElementById("toggle-volume-type")
-    if (toggle) toggle.onchange = () => renderYearlyChart()
+    bindYearlySegmentedControl("[data-metric]", () => renderYearlyChart())
+    bindYearlySegmentedControl("[data-resolution]", () => loadYearlyStats())
     loadPersonalBests()
+}
+
+function bindYearlySegmentedControl(optionSelector, onChange) {
+    const options = [...document.querySelectorAll(`.yearly-segmented-option${optionSelector}`)]
+    options.forEach(button => {
+        button.onclick = () => {
+            options.forEach(option => {
+                const selected = option === button
+                option.classList.toggle("is-active", selected)
+                option.setAttribute("aria-pressed", String(selected))
+            })
+            onChange()
+        }
+    })
 }
 
 // ===== UI helpers =====
@@ -1147,8 +1208,6 @@ async function loadStats(){
 
 function setupChartResizeObservers() {
     const monthlyContainer = document.getElementById("monthly-panel")
-    const yearlyContainer = document.getElementById("yearly-panel")
-
     if (monthlyContainer && !monthlyChartResizeObserver) {
         let rafId = null
         monthlyChartResizeObserver = new ResizeObserver(() => {
@@ -1156,15 +1215,6 @@ function setupChartResizeObservers() {
             rafId = requestAnimationFrame(() => renderMonthlyChart())
         })
         monthlyChartResizeObserver.observe(monthlyContainer)
-    }
-
-    if (yearlyContainer && !yearlyChartResizeObserver) {
-        let rafId = null
-        yearlyChartResizeObserver = new ResizeObserver(() => {
-            if (rafId) cancelAnimationFrame(rafId)
-            rafId = requestAnimationFrame(() => renderYearlyChart())
-        })
-        yearlyChartResizeObserver.observe(yearlyContainer)
     }
 }
 
@@ -1402,34 +1452,43 @@ function renderMonthlyChart() {
 }
 
 async function loadYearlyStats() {
+    const requestId = ++yearlyStatsRequestId
+    const resolution = getYearlyResolution()
     let statsByYear = {}
 
     if (isGuest) {
-        statsByYear = guestYearlyStats
+        statsByYear = Object.fromEntries(Object.keys(guestYearlyStats).map(year => [
+            year,
+            resolution === "week" ? buildGuestWeeklyStats(Number(year)) : guestYearlyStats[year]
+        ]))
     } else {
         for (let i = 0; i < selectedYears.length; i++) {
             const year = selectedYears[i]
-            const res = await authFetch(`/api/stats/year?year=${year}`)
+            const endpoint = resolution === "week" ? "/api/stats/year/weeks" : "/api/stats/year"
+            const res = await authFetch(`${endpoint}?year=${year}`)
             if (!res) return
             statsByYear[year] = await res.json()
         }
     }
 
+    if (requestId !== yearlyStatsRequestId) return
     cachedYearlyStatsByYear = statsByYear
     renderYearlyChart()
+}
+
+function getYearlyResolution() {
+    return document.querySelector(".yearly-segmented-option.is-active[data-resolution]")?.dataset.resolution || "month"
+}
+
+function getYearlyMetric() {
+    return document.querySelector(".yearly-segmented-option.is-active[data-metric]")?.dataset.metric || "distance"
 }
 
 function renderYearlyChart() {
     if (!cachedYearlyStatsByYear) return
 
-    const toggle = document.getElementById("toggle-volume-type")
-    const metric = toggle && toggle.checked ? "duration" : "distance"
-
-    const labelEl = document.getElementById("toggle-label")
-    if (labelEl) {
-        labelEl.textContent =
-            metric === "distance" ? "Show by Duration" : "Show by Distance"
-    }
+    const metric = getYearlyMetric()
+    const resolution = getYearlyResolution()
 
     const colors = ["#eb41ac","#a78bfa","#f59e0b","#60a5fa","#d6e723","#ef4444","#22c55e","#2f0a9d"]
 
@@ -1474,7 +1533,9 @@ function renderYearlyChart() {
         tableBody.appendChild(row)
     })
 
-    const labels = MONTH_NAMES.map(m => m.substring(0,3))
+    const labels = resolution === "week"
+        ? Array.from({ length: 53 }, (_, index) => `W${String(index + 1).padStart(2, "0")}`)
+        : MONTH_NAMES.map(m => m.substring(0,3))
     const nextHiddenYears = new Set()
 
     allData.forEach((item, idx) => {
@@ -1504,7 +1565,6 @@ function renderYearlyChart() {
     const chartData = { labels, datasets }
 
     const canvas = document.getElementById("yearlyChart")
-    const container = document.getElementById("yearly-panel")
     const ctx = canvas.getContext("2d")
 
     if (yearlyChart) {
@@ -1512,18 +1572,8 @@ function renderYearlyChart() {
         yearlyChart = null
     }
 
-    const maxCanvasSize = 4096
-    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2))
-    const widthPx = getContentWidth(container) || canvas.clientWidth || 400
-    const heightPx = 320 // fixed layout height
-
-    canvas.width = Math.min(Math.round(widthPx * dpr), maxCanvasSize)
-    canvas.height = Math.min(Math.round(heightPx * dpr), maxCanvasSize)
-    canvas.style.width = widthPx + 'px'
-    canvas.style.height = heightPx + 'px'
-
     const optionsY = {
-        responsive: false,
+        responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: {
@@ -1546,9 +1596,9 @@ function renderYearlyChart() {
                     chart.update()
                 }
             },
-            tooltip: { mode: 'index', intersect: false }
+            tooltip: { mode: 'index', axis: 'x', intersect: false }
         },
-        interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        interaction: { mode: 'index', axis: 'x', intersect: false },
         scales: {
             x: {
                 ticks: {
@@ -1560,14 +1610,20 @@ function renderYearlyChart() {
             y: {
                 beginAtZero: true,
                 ticks: {
-                    callback: v => (metric === 'distance' ? Number(v).toFixed(1) : Number(v).toFixed(0)),
+                    callback: v => {
+                        if (metric === 'distance') return Number(v).toFixed(1)
+                        const totalMinutes = Math.round(Number(v) || 0)
+                        const hours = Math.floor(totalMinutes / 60)
+                        const minutes = totalMinutes % 60
+                        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+                    },
                     color: '#d3d6da',
                     padding: 6,
                     font: { size: 12, family: 'Inter', weight: '400' }
                 },
                 grid: { color: 'rgba(148, 163, 184, 0.35)', drawTicks: false },
                 border: { display: false },
-                title: { display: true, text: metric === 'distance' ? 'Distance (km)' : 'Duration (min)', color: '#d3d6da', font: { size: 14, family: 'Inter', weight: '600' } }
+                title: { display: true, text: metric === 'distance' ? 'Distance (km)' : 'Duration (hh:mm)', color: '#d3d6da', font: { size: 14, family: 'Inter', weight: '600' } }
             }
         }
     }

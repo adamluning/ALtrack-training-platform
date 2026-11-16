@@ -14,6 +14,7 @@ Structure:
 	stats:
 		GetMonthlyStats
 		GetYearlyStats
+		GetWeeklyStats
 	PBs:
 		CreatePB
 		GetPBs
@@ -250,6 +251,48 @@ func GetYearlyStats(userID, year int) ([]MonthlyVolume, error) {
 		result = append(result, monthMap[m])
 	}
 
+	return result, nil
+}
+
+func GetWeeklyStats(userID, year int) ([]WeeklyVolume, error) {
+	query := `SELECT
+				  EXTRACT(WEEK FROM session_date)::int AS week,
+				  COALESCE(SUM(distance_km),0) AS distance_km,
+				  COALESCE(SUM(duration_min),0) AS duration_min
+			  FROM sessions
+			  WHERE user_id=$1
+			  AND completed=true
+			  AND session_date >= make_date($2, 1, 1)
+			  AND session_date < make_date($2 + 1, 1, 1)
+			  GROUP BY EXTRACT(WEEK FROM session_date)
+			  ORDER BY week`
+	rows, err := db.DB.Query(query, userID, year)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	weekMap := make(map[int]WeeklyVolume, 53)
+	for week := 1; week <= 53; week++ {
+		weekMap[week] = WeeklyVolume{Year: year, Week: week}
+	}
+
+	for rows.Next() {
+		var volume WeeklyVolume
+		volume.Year = year
+		if err := rows.Scan(&volume.Week, &volume.DistanceKm, &volume.DurationMin); err != nil {
+			return nil, err
+		}
+		weekMap[volume.Week] = volume
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := make([]WeeklyVolume, 0, 53)
+	for week := 1; week <= 53; week++ {
+		result = append(result, weekMap[week])
+	}
 	return result, nil
 }
 

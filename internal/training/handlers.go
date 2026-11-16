@@ -282,6 +282,22 @@ func GetYearlyStatsHandler(c *gin.Context) {
 	c.JSON(200, data)
 }
 
+func GetWeeklyStatsHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	year, err := strconv.Atoi(c.Query("year"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid year"})
+		return
+	}
+
+	data, err := GetWeeklyStats(userID, year)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, data)
+}
+
 func AddOldStatsHandler(c *gin.Context) {
 	if c.GetBool("is_guest") {
 		c.JSON(403, gin.H{"error": "guest users cannot modify data"})

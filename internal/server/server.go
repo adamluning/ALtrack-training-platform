@@ -49,6 +49,7 @@ func New() *gin.Engine {
 
 	protected.GET("/stats/month", training.GetMonthlyStatsHandler)
 	protected.GET("/stats/year", training.GetYearlyStatsHandler)
+	protected.GET("/stats/year/weeks", training.GetWeeklyStatsHandler)
 	protected.POST("/stats/manual", training.AddOldStatsHandler)
 
 	protected.POST("/pbs", training.CreatePBHandler)

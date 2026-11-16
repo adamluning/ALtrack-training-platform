@@ -30,3 +30,10 @@ type MonthlyVolume struct {
 	DistanceKm  float64 `json:"distance_km"`
 	DurationMin int     `json:"duration_min"`
 }
+
+type WeeklyVolume struct {
+	Year        int     `json:"year"`
+	Week        int     `json:"week"`
+	DistanceKm  float64 `json:"distance_km"`
+	DurationMin int     `json:"duration_min"`
+}

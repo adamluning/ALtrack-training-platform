@@ -172,15 +172,26 @@
 
         <section class="panel" id="yearly-panel" aria-labelledby="yearly-title">
                     <h2 id="yearly-title">Yearly volume</h2>
-                    <div id="yearly-toggle">
-                        <label class="switch">
-                            <input type="checkbox" id="toggle-volume-type">
-                            <span class="slider round"></span>
-                        </label>
-                        <span id="toggle-label">Show by Duration</span>
+                    <div id="yearly-controls">
+                        <div id="yearly-metric-control">
+                            Metric
+                            <div class="yearly-segmented-control" role="group" aria-label="Plot metric">
+                                <button type="button" class="yearly-segmented-option is-active" data-metric="distance" aria-pressed="true">Distance</button>
+                                <button type="button" class="yearly-segmented-option" data-metric="duration" aria-pressed="false">Duration</button>
+                            </div>
+                        </div>
+                        <div id="yearly-resolution-control">
+                            Plot by
+                            <div class="yearly-segmented-control" role="group" aria-label="Plot resolution">
+                                <button type="button" class="yearly-segmented-option is-active" data-resolution="month" aria-pressed="true">Month</button>
+                                <button type="button" class="yearly-segmented-option" data-resolution="week" aria-pressed="false">Week</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <canvas id="yearlyChart"></canvas>
+                    <div id="yearly-chart-container">
+                        <canvas id="yearlyChart"></canvas>
+                    </div>
 
                     <div id="yearly-totals-table">
                         <table class="yearly-table">
