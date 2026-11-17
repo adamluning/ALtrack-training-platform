@@ -210,6 +210,7 @@ function buildGuestWeeklyStats(year) {
 
 // ===== App lifecycle =====
 function bootApp(){
+    document.getElementById("landing-page").style.display = "none"
     document.getElementById("auth-panel").style.display = "none"
     document.getElementById("register-panel").style.display = "none"
     document.getElementById("app-root").style.display = "block"
@@ -297,15 +298,37 @@ window.onload = () => {
     if(AUTH_TOKEN){
         bootApp()
     } else {
-        document.getElementById("auth-panel").style.display = "block"
+        document.getElementById("landing-page").style.display = "block"
     }
+}
+
+// ===== Landing page navigation =====
+function showLandingPage(){
+    document.getElementById("auth-panel").style.display = "none"
+    document.getElementById("register-panel").style.display = "none"
+    document.getElementById("app-root").style.display = "none"
+    document.getElementById("landing-page").style.display = "block"
+    setAuthError("")
+    setRegisterError("")
+}
+
+function showLoginFromLanding(){
+    document.getElementById("landing-page").style.display = "none"
+    document.getElementById("register-panel").style.display = "none"
+    document.getElementById("auth-panel").style.display = "block"
+}
+
+function showRegisterFromLanding(){
+    document.getElementById("landing-page").style.display = "none"
+    document.getElementById("auth-panel").style.display = "none"
+    document.getElementById("register-panel").style.display = "block"
 }
 
 function updateTopbar() {
     const topBar = document.getElementById("topbar")
 
     let guestLabel = isGuest 
-        ? `<span style="margin-right:10px;">Guest mode</span>` 
+        ? `<span style="margin-right:10px;">Preview mode</span>` 
         : ""
 
     topBar.innerHTML = `
@@ -499,10 +522,11 @@ function forceLogout(){
     AUTH_TOKEN = null
     localStorage.removeItem("auth_token")
 
-    // Hide app, show login
+    // Hide app, show landing page
     document.getElementById("app-root").style.display = "none"
     document.getElementById("register-panel").style.display = "none"
-    document.getElementById("auth-panel").style.display = "block"
+    document.getElementById("auth-panel").style.display = "none"
+    document.getElementById("landing-page").style.display = "block"
     setAuthError("")
 }
 
@@ -757,7 +781,7 @@ function renderSessionCard(s){
 // ===== Session actions =====
 async function addSession() {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         document.getElementById("session-title").value = ""
         document.getElementById("session-desc").value = ""
         document.getElementById("session-date").value = selectedDate || "" 
@@ -807,7 +831,7 @@ async function addSession() {
 
 async function completeSession(id) {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -834,7 +858,7 @@ async function completeSession(id) {
 
 async function submitVolume(id) {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -865,7 +889,7 @@ async function submitVolume(id) {
 
 async function addNote(id) {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         document.getElementById(`note-${id}`).value = ""
         return
     }
@@ -888,7 +912,7 @@ async function addNote(id) {
 
 function editSession(id) {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -960,7 +984,7 @@ function cancelEditSession(id) {
 
 async function saveSessionEdit(id) {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -999,7 +1023,7 @@ function htmlEscape(str) {
 
 async function deleteSession(id) {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -1079,7 +1103,7 @@ function renderGoalCard(g) {
 function editGoal(id) {
     closeAllRowMenus()
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -1152,7 +1176,7 @@ async function saveGoalEdit(id) {
 
 async function addGoal() {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         document.getElementById("goal-title").value = ""
         document.getElementById("goal-target").value = ""
         document.getElementById("goal-date").value = ""
@@ -1190,7 +1214,7 @@ async function addGoal() {
 async function deleteGoal(id) {
     closeAllRowMenus()
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -1633,7 +1657,7 @@ function renderYearlyChart() {
 
 async function addMonthlyVolume() {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         document.getElementById("mv-year").value = ""
         document.getElementById("mv-month").value = ""
         document.getElementById("mv-distance").value = ""
@@ -1733,7 +1757,7 @@ function renderPBCard(pb) {
 function editPersonalBest(id) {
     closeAllRowMenus()
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
@@ -1805,7 +1829,7 @@ function isValidTime(t) {
 
 async function addPersonalBest() {
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         document.getElementById("pb-distance").value = ""
         document.getElementById("pb-time").value = ""
         return
@@ -1840,7 +1864,7 @@ async function addPersonalBest() {
 async function deletePersonalBest(id) {
     closeAllRowMenus()
     if (isGuest) {
-        setAppMessage("Guest mode is read-only.")
+        setAppMessage("Preview mode is read-only.")
         return
     }
 
