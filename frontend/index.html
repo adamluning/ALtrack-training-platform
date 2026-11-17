@@ -13,9 +13,51 @@
 
 <body>
 
+<!--Landing page-->
+<div id="landing-page">
+    <div id="landing-topbar">
+        <div id="landing-logo">
+            <div class="auth-logo-mark landing-logo-mark"></div>
+            <span>ALtrack</span>
+        </div>
+        <div id="landing-topbar-actions">
+            <button type="button" class="btn-secondary" onclick="guestLogin()">Preview</button>
+            <button type="button" class="btn-primary" onclick="showLoginFromLanding()">Log in</button>
+        </div>
+    </div>
+
+    <div id="landing-hero">
+        <div id="landing-hero-text">
+            <h1 class="landing-title">Track your training.<br>See your progress.</h1>
+            <p class="landing-tagline">Plan sessions, chase goals, and beat your personal bests — all in one place.</p>
+            <div id="landing-hero-actions">
+                <button type="button" class="btn-primary" onclick="showRegisterFromLanding()">Create free account</button>
+                <button type="button" class="btn-secondary" onclick="guestLogin()">Preview the app</button>
+            </div>
+        </div>
+        <div id="landing-hero-image">
+            <img src="assets/hero.jpg" alt="ALtrack app preview" loading="eager">
+        </div>
+    </div>
+
+    <div id="landing-features">
+        <div class="landing-feature-card">
+            <h3>Calendar</h3>
+            <p class="hint-text">Plan and browse your training sessions by date.</p>
+        </div>
+        <div class="landing-feature-card">
+            <h3>Volume</h3>
+            <p class="hint-text">Track monthly and yearly distance and duration at a glance.</p>
+        </div>
+        <div class="landing-feature-card">
+            <h3>Personal bests</h3>
+            <p class="hint-text">Log your best times and watch them improve over time.</p>
+        </div>
+    </div>
+</div>
 
 <!--Authentication-->
-<div id="auth-panel">
+<div id="auth-panel" style="display:none;">
     <div class="auth-brand">
         <div class="auth-logo-mark"></div>
         <h1 class="auth-title">ALtrack</h1>
@@ -42,7 +84,8 @@
         <div class="auth-divider"><span>or</span></div>
 
         <button type="button" class="btn-secondary" onclick="showRegister()">Create account</button>
-        <button type="button" class="btn-ghost" onclick="guestLogin()">Continue as guest</button>
+        <button type="button" class="btn-ghost" onclick="guestLogin()">Preview</button>
+        <button type="button" class="btn-ghost" onclick="showLandingPage()">Back to home</button>
     </form>
 </div>
 
