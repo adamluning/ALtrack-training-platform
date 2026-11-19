@@ -47,7 +47,7 @@
         </div>
         <div class="landing-feature-card">
             <h3>Volume</h3>
-            <p class="hint-text">Track monthly and yearly distance and duration at a glance.</p>
+            <p class="hint-text">Track your training volume over any time period.</p>
         </div>
         <div class="landing-feature-card">
             <h3>Personal bests</h3>
@@ -259,7 +259,8 @@
                         </table>
                     </div>
 
-                    <div class="panel panel-nested" id="manual-volume">
+                    <button class="btn-secondary" id="show-manual-volume-button" onclick="showManualVolumeForm()">+ Add monthly volume</button>
+                    <div class="panel panel-nested" id="manual-volume" style="display:none;">
                         <h4>Add Monthly Volume</h4>
                         <p class="hint-text">Add volume as an entire block without creating sessions. This creates a synthetic session on the first day of the month.</p>
 
@@ -269,6 +270,7 @@
                             <input id="mv-distance" type="number" min="0" step="0.1" placeholder="Distance km">
                             <input id="mv-duration" type="number" min="0" placeholder="Duration min">
                             <button type="submit" class="btn-primary">Add</button>
+                            <button type="button" class="btn-secondary" onclick="hideManualVolumeForm()">Cancel</button>
                         </form>
                     </div>
         </section>
@@ -322,7 +324,7 @@
 </div>
 
 <script src="vendor/chart.umd.min.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 
 </html>

@@ -259,6 +259,7 @@ function applyGuestReadOnlyUI() {
         "#add-session-panel button",
         "#manual-volume input",
         "#manual-volume button",
+        "#show-manual-volume-button",
         "#pb-panel input",
         "#pb-panel button",
         "#goals-list button",
@@ -425,6 +426,20 @@ function hideAddGoalForm() {
     document.getElementById("goal-title").value = ""
     document.getElementById("goal-target").value = ""
     document.getElementById("goal-date").value = ""
+}
+
+function showManualVolumeForm() {
+    document.getElementById("manual-volume").style.display = "block"
+    document.getElementById("show-manual-volume-button").style.display = "none"
+}
+
+function hideManualVolumeForm() {
+    document.getElementById("manual-volume").style.display = "none"
+    document.getElementById("show-manual-volume-button").style.display = "inline-flex"
+    document.getElementById("mv-year").value = ""
+    document.getElementById("mv-month").value = ""
+    document.getElementById("mv-distance").value = ""
+    document.getElementById("mv-duration").value = ""
 }
 
 function showAddPBForm() {
@@ -1076,6 +1091,7 @@ async function loadGoals() {
         <div class="goal-col goal-col-title">Title</div>
         <div class="goal-col goal-col-target">Target</div>
         <div class="goal-col goal-col-end">End date</div>
+        <div class="goal-col goal-col-status">Status</div>
         <div class="goal-col goal-col-actions"></div>
     `
     container.appendChild(header)
@@ -1097,23 +1113,55 @@ const trashIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 function renderGoalCard(g) {
     const disabledAttr = isGuest ? "disabled" : ""
     const menuId = `goal-menu-${g.id}`
+    const status = g.status || (g.completed ? "completed" : "in_progress")
+    const statusText = status === "completed" ? "Completed" : status === "closed" ? "Not completed" : "In progress"
+    const statusActions = status === "in_progress"
+        ? `<div class="goal-close-control">
+               <button class="btn-secondary goal-complete-button" ${disabledAttr} onclick="toggleGoalCloseChoices(${g.id})">Close</button>
+               <div class="goal-close-choices" id="goal-close-choices-${g.id}" hidden>
+                   <button class="goal-outcome-completed" ${disabledAttr} onclick="setGoalStatus(${g.id}, 'completed')">Completed</button>
+                   <button class="goal-outcome-not-completed" ${disabledAttr} onclick="setGoalStatus(${g.id}, 'closed')">Not completed</button>
+               </div>
+           </div>`
+        : ""
 
     return `
     <div class="goal-card">
         <div class="goal-col goal-col-title"><b>${htmlEscape(g.title)}</b></div>
         <div class="goal-col goal-col-target">${htmlEscape(g.target)}</div>
         <div class="goal-col goal-col-end">${htmlEscape(g.end_date)}</div>
+        <div class="goal-col goal-col-status"><span class="goal-status${status === "completed" ? " is-completed" : status === "closed" ? " is-not-completed" : ""}">${statusText}</span></div>
         <div class="goal-col goal-col-actions">
+            ${statusActions}
             <div class="row-menu">
                 <button class="row-menu-trigger" onclick="toggleRowMenu(event, '${menuId}')" aria-label="Goal options">${kebabIcon}</button>
                 <div class="row-menu-dropdown" id="${menuId}">
                     <button ${disabledAttr} onclick="editGoal(${g.id})">${editIcon} Edit</button>
+                    ${status !== "in_progress" ? `<button ${disabledAttr} onclick="setGoalStatus(${g.id}, 'in_progress')">Reopen</button>` : ""}
                     <button class="danger" ${disabledAttr} onclick="deleteGoal(${g.id})">${trashIcon} Delete</button>
                 </div>
             </div>
         </div>
     </div>
     `
+}
+
+function toggleGoalCloseChoices(id) {
+    const choices = document.getElementById(`goal-close-choices-${id}`)
+    if (choices) choices.hidden = !choices.hidden
+}
+
+async function setGoalStatus(id, status) {
+    if (isGuest) {
+        setAppMessage("Preview mode is read-only.")
+        return
+    }
+    const res = await authFetch(`/api/goals/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+    })
+    if (res?.ok) await loadGoals()
 }
 
 function editGoal(id) {
@@ -1706,11 +1754,7 @@ async function addMonthlyVolume() {
         })
     })
 
-    document.getElementById("mv-year").value = ""
-    document.getElementById("mv-month").value = ""
-    document.getElementById("mv-distance").value = ""
-    document.getElementById("mv-duration").value = ""
-
+    hideManualVolumeForm()
     loadStats()
 }
 

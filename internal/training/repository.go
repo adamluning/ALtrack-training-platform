@@ -148,7 +148,7 @@ func CreateGoal(userID int, title, target string, date time.Time) error {
 }
 
 func GetGoalsByYear(userID, year int) ([]Goal, error) {
-	query := `SELECT id, title, target, end_date
+	query := `SELECT id, title, target, end_date, status
 			  FROM goals
 			  WHERE user_id=$1 AND EXTRACT(YEAR FROM end_date)=$2
 			  ORDER BY end_date`
@@ -165,7 +165,7 @@ func GetGoalsByYear(userID, year int) ([]Goal, error) {
 		var g Goal
 		var date time.Time
 
-		err := rows.Scan(&g.ID, &g.Title, &g.Target, &date)
+		err := rows.Scan(&g.ID, &g.Title, &g.Target, &date, &g.Status)
 		if err != nil {
 			return nil, err
 		}
@@ -174,6 +174,12 @@ func GetGoalsByYear(userID, year int) ([]Goal, error) {
 		goals = append(goals, g)
 	}
 	return goals, nil
+}
+
+func UpdateGoalStatus(userID int, id int64, status string) error {
+	query := `UPDATE goals SET status=$1 WHERE user_id=$2 AND id=$3`
+	_, err := db.DB.Exec(query, status, userID, id)
+	return err
 }
 
 func UpdateGoal(userID int, id int64, title, target, endDate string) error {

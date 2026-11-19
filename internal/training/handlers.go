@@ -233,6 +233,34 @@ func UpdateGoalHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "updated"})
 }
 
+func UpdateGoalStatusHandler(c *gin.Context) {
+	if c.GetBool("is_guest") {
+		c.JSON(403, gin.H{"error": "guest users cannot modify data"})
+		return
+	}
+	var body struct {
+		Status string `json:"status"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"error": "invalid body"})
+		return
+	}
+	if body.Status != "in_progress" && body.Status != "completed" && body.Status != "closed" {
+		c.JSON(400, gin.H{"error": "invalid goal status"})
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid goal id"})
+		return
+	}
+	if err := UpdateGoalStatus(c.GetInt("user_id"), id, body.Status); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"status": "updated"})
+}
+
 func DeleteGoalHandler(c *gin.Context) {
 	if c.GetBool("is_guest") {
 		c.JSON(403, gin.H{"error": "guest users cannot modify data"})

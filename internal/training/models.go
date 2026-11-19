@@ -5,6 +5,7 @@ type Goal struct {
 	Title   string `json:"title"`
 	Target  string `json:"target"`
 	EndDate string `json:"end_date"`
+	Status  string `json:"status"`
 }
 
 type Session struct {
