@@ -252,6 +252,7 @@ function bindYearlySegmentedControl(optionSelector, onChange) {
 // ===== UI helpers =====
 function applyGuestReadOnlyUI() {
     const selectors = [
+        "#show-add-goal-button",
         "#add-goal-panel input",
         "#add-goal-panel button",
         "#add-session-panel input",
@@ -295,6 +296,10 @@ async function authFetch(url, options = {}) {
 }
 
 window.onload = () => {
+    document.querySelectorAll(".current-year").forEach(element => {
+        element.textContent = new Date().getFullYear()
+    })
+
     if(AUTH_TOKEN){
         bootApp()
     } else {
@@ -322,6 +327,9 @@ function showRegisterFromLanding(){
     document.getElementById("landing-page").style.display = "none"
     document.getElementById("auth-panel").style.display = "none"
     document.getElementById("register-panel").style.display = "block"
+    setRegisterBackDestination(true)
+    setAuthError("")
+    setRegisterError("")
 }
 
 function updateTopbar() {
@@ -330,13 +338,14 @@ function updateTopbar() {
     let guestLabel = isGuest 
         ? `<span style="margin-right:10px;">Preview mode</span>` 
         : ""
+    const logoutLabel = isGuest ? "Back to home" : "Logout"
 
     topBar.innerHTML = `
         <div id="logo">ALtrack Training Platform</div>
 
         <div id="topbar-actions">
             ${guestLabel}
-            <button onclick="logout()">Logout</button>
+            <button onclick="logout()">${logoutLabel}</button>
         </div>
     `
 }
@@ -576,8 +585,15 @@ async function register() {
 function showRegister(){
     document.getElementById("auth-panel").style.display = "none"
     document.getElementById("register-panel").style.display = "block"
+    setRegisterBackDestination(false)
     setAuthError("")
     setRegisterError("")
+}
+
+function setRegisterBackDestination(isLandingPage){
+    const backButton = document.getElementById("register-back-button")
+    backButton.textContent = isLandingPage ? "Back to home" : "Back to login"
+    backButton.setAttribute("onclick", isLandingPage ? "showLandingPage()" : "showLogin()")
 }
 
 function showLogin(){

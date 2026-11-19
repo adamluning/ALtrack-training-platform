@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body>
@@ -54,6 +54,16 @@
             <p class="hint-text">Log your best times and watch them improve over time.</p>
         </div>
     </div>
+    <footer class="site-footer">
+        <div class="site-footer-links">
+            <a class="site-footer-link" href="https://github.com/adamluning/ALtrack-training-platform" target="_blank" rel="noopener noreferrer" aria-label="ALtrack on GitHub">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.08c-3.1.67-3.76-1.32-3.76-1.32-.5-1.29-1.23-1.63-1.23-1.63-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 1.71 2.62 1.22 3.26.93.1-.72.39-1.22.71-1.5-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.15a10.6 10.6 0 0 1 5.55 0c2.11-1.45 3.05-1.15 3.05-1.15.61 1.54.23 2.68.11 2.96.72.78 1.15 1.78 1.15 3 0 4.29-2.61 5.23-5.1 5.51.4.35.76 1.03.76 2.08V22c0 .29.2.63.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg>
+                <span>GitHub</span>
+            </a>
+            <a class="site-footer-link" href="mailto:adam.luning@outlook.com">adam.luning@outlook.com</a>
+        </div>
+        <div class="site-footer-copyright"><span aria-hidden="true">©</span> <span class="current-year"></span> ALtrack Training Platform</div>
+    </footer>
 </div>
 
 <!--Authentication-->
@@ -112,7 +122,7 @@
         </div>
         <button type="submit" class="btn-primary">Register</button>
         <div id="register-error" class="auth-error" style="display:none;"></div>
-        <button type="button" class="btn-ghost" onclick="showLogin()">Back to login</button>
+        <button type="button" class="btn-ghost" id="register-back-button" onclick="showLogin()">Back to login</button>
     </form>
 </div>
 
@@ -297,6 +307,17 @@
         </div>
 
     </div>
+
+    <footer class="site-footer">
+        <div class="site-footer-links">
+            <a class="site-footer-link" href="https://github.com/adamluning/ALtrack-training-platform" target="_blank" rel="noopener noreferrer" aria-label="ALtrack on GitHub">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.53v-2.08c-3.1.67-3.76-1.32-3.76-1.32-.5-1.29-1.23-1.63-1.23-1.63-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 1.71 2.62 1.22 3.26.93.1-.72.39-1.22.71-1.5-2.48-.28-5.09-1.24-5.09-5.52 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.15a10.6 10.6 0 0 1 5.55 0c2.11-1.45 3.05-1.15 3.05-1.15.61 1.54.23 2.68.11 2.96.72.78 1.15 1.78 1.15 3 0 4.29-2.61 5.23-5.1 5.51.4.35.76 1.03.76 2.08V22c0 .29.2.63.77.53A11.1 11.1 0 0 0 12 .9Z"/></svg>
+                <span>GitHub</span>
+            </a>
+            <a class="site-footer-link" href="mailto:adam.luning@outlook.com">adam.luning@outlook.com</a>
+        </div>
+        <div class="site-footer-copyright"><span aria-hidden="true">©</span> <span class="current-year"></span> ALtrack Training Platform</div>
+    </footer>
 
 </div>
 
