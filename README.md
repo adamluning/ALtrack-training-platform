@@ -31,18 +31,22 @@ Live at: [altrack.se](https://altrack.se/)
 .
 ├── api/
 │   └── main.go                # Application entry point
+├── docker/                    # Dockerfiles for the API and frontend, plus Nginx config
+├── frontend/                  # Static frontend, split into feature-focused assets
+│   ├── css/                   # Frontend styles
+│   ├── js/                    # Frontend behavior
+│   ├── assets/                # Static images
+│   └── vendor/                # Chart.js bundle used by the frontend
 ├── internal/
 │   ├── auth/                  # Registration, login, JWT issuance, password hashing
 │   ├── db/                    # Database connection/initialization
-│   ├── middleware/             # Auth middleware (JWT verification)
+│   ├── middleware/            # Auth middleware (JWT verification)
 │   ├── server/                # Router setup and route definitions
-│   └── training/              # Sessions, goals, PBs, and stats — models, handlers, repository
-├── migrations/                 # SQL schema migrations (up/down pairs)
-├── frontend/                   # Static frontend (HTML/CSS/JS) and Chart.js vendor bundle
-├── docker/                     # Dockerfiles for the API and frontend, plus Nginx config
-├── docker-compose.yml           # Orchestrates db, migrate, api, and frontend services
-├── go.mod / go.sum              # Go module dependencies
-└── .env.example                 # Template for required environment variables
+│   └── training/              # Models, handlers, and repository for data structures
+├── migrations/                # SQL schema migrations (up/down pairs)
+├── .env.example               # Template for required environment variables
+├── docker-compose.yml         # Orchestrates db, migrate, api, and frontend services
+└── go.mod / go.sum            # Go module dependencies
 ```
 
 ## Architecture
@@ -60,7 +64,7 @@ The application is composed of four Docker services, defined in `docker-compose.
 ### Prerequisites
 
 - Docker and Docker Compose
-- (For local, non-Docker development) Go 1.24+ and Node.js 18+
+- (For local development) Go 1.24+ and Node.js 18+
 
 ### Setup
 
